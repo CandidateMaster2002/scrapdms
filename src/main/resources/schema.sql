@@ -30,5 +30,5 @@ CREATE TABLE IF NOT EXISTS grc_score (
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_gst_returns_gstin ON gst_returns(gstin);
-CREATE INDEX idx_grc_score_gstin ON grc_score(gstin);
+CREATE INDEX IF NOT EXISTS idx_gst_returns_gstin ON gst_returns(gstin);
+CREATE INDEX IF NOT EXISTS idx_grc_score_gstin ON grc_score(gstin);
