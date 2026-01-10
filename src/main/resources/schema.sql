@@ -17,6 +17,9 @@ CREATE TABLE IF NOT EXISTS gst_details (
 
 
 
+-- Drop table to enforce new Primary Key schema (ID -> GSTIN)
+DROP TABLE IF EXISTS grc_score;
+
 CREATE TABLE IF NOT EXISTS grc_score (
     gstin VARCHAR(15) PRIMARY KEY REFERENCES gst_details(gstin),
     score DECIMAL(5, 2),
