@@ -18,12 +18,18 @@ CREATE TABLE IF NOT EXISTS gst_details (
 
 
 CREATE TABLE IF NOT EXISTS grc_score (
-    id SERIAL PRIMARY KEY,
-    gstin VARCHAR(15) REFERENCES gst_details(gstin),
+    gstin VARCHAR(15) PRIMARY KEY REFERENCES gst_details(gstin),
     score DECIMAL(5, 2),
     score_version VARCHAR(10),
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 
-CREATE INDEX IF NOT EXISTS idx_grc_score_gstin ON grc_score(gstin);
+
+
+-- Force update columns to handle larger data
+ALTER TABLE gst_details ALTER COLUMN gst_type TYPE VARCHAR(100);
+ALTER TABLE gst_details ALTER COLUMN trade_name TYPE VARCHAR(500);
+ALTER TABLE gst_details ALTER COLUMN legal_name TYPE VARCHAR(500);
+ALTER TABLE gst_details ALTER COLUMN gst_status TYPE VARCHAR(100);
+ALTER TABLE gst_details ALTER COLUMN aggregate_turnover TYPE VARCHAR(255);

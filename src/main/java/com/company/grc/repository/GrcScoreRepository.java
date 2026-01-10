@@ -4,9 +4,7 @@ import com.company.grc.entity.GrcScoreEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
-
 @Repository
-public interface GrcScoreRepository extends JpaRepository<GrcScoreEntity, Long> {
-    Optional<GrcScoreEntity> findTopByGstinOrderByCalculatedAtDesc(String gstin);
+public interface GrcScoreRepository extends JpaRepository<GrcScoreEntity, String> {
+    // findById(gstin) is now sufficient to find the single score record.
 }

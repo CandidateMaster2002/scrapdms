@@ -84,9 +84,6 @@ public class GstFetchService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        // Detailed returns mapping removed as per requirement
-        // if (data.getTaxpayerReturnDetails() != null ...) logic deleted
-
         return entity;
     }
 

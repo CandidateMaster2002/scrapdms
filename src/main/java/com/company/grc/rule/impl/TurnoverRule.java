@@ -56,6 +56,11 @@ public class TurnoverRule implements GrcRule {
 
             // Regex could extract the first number found
             String numberOnly = text.replaceAll("[^0-9.]", " ").trim();
+            for (String part : numberOnly.split("\\s+")) {
+                if (part.matches("\\d+(\\.\\d+)?")) {
+                    return Double.parseDouble(part);
+                }
+            }
             // "500" -> 500.0
             // "5 - 50" -> ?? GST usually returns a bucket.
             // If API returns specific value like "4500000", that's different.

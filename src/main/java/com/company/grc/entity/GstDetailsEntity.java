@@ -25,19 +25,19 @@ public class GstDetailsEntity {
     @Column(length = 15)
     private String gstin;
 
-    @Column(name = "gst_type")
+    @Column(name = "gst_type", length = 100)
     private String gstType; // Public / Private / Proprietorship
 
-    @Column(name = "trade_name")
+    @Column(name = "trade_name", length = 500)
     private String tradeName;
 
-    @Column(name = "legal_name")
+    @Column(name = "legal_name", length = 500)
     private String legalName;
 
     @Column(name = "registration_date")
     private LocalDate registrationDate;
 
-    @Column(name = "gst_status")
+    @Column(name = "gst_status", length = 50)
     private String gstStatus; // Active / Inactive
 
     @Column(columnDefinition = "TEXT")
@@ -46,7 +46,7 @@ public class GstDetailsEntity {
     @Column(name = "last_api_sync")
     private LocalDateTime lastApiSync;
 
-    @Column(name = "aggregate_turnover")
+    @Column(name = "aggregate_turnover", length = 100)
     private String aggregateTurnover;
 
     @Column(name = "delay_count_gstr1")
