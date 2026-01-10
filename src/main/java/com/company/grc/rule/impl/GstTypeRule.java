@@ -10,19 +10,35 @@ public class GstTypeRule implements GrcRule {
 
     @Override
     public BigDecimal apply(GstDetailsEntity details) {
-        if (details.getGstType() == null) return BigDecimal.ZERO;
+        if (details.getGstType() == null)
+            return BigDecimal.ZERO;
 
-        String type = details.getGstType().toLowerCase();
-        
-        if (type.contains("public limited")) {
-            return new BigDecimal("20.0");
-        } else if (type.contains("private limited")) {
-            return new BigDecimal("15.0");
-        } else if (type.contains("proprietorship") || type.contains("partnership")) {
-            return new BigDecimal("10.0");
+        String type = details.getGstType(); // Case sensitive check not specified, but usually safe to ignore case or
+                                            // normalized
+
+        // Exact Rules:
+        // "Society", "Trust", "AOP", "Government" -> 2
+        // "Private" -> 4
+        // "Proprietor" -> 13
+
+        // Standardizing for contain check
+        String typeCheck = type.toLowerCase();
+
+        if (typeCheck.contains("society") || typeCheck.contains("trust") ||
+                typeCheck.contains("aop") || typeCheck.contains("government") ||
+                typeCheck.contains("club")) { // "Society/ Club/ Trust/ AOP" in example
+            return new BigDecimal("2.0");
         }
-        
-        return new BigDecimal("5.0");
+
+        if (typeCheck.contains("private")) {
+            return new BigDecimal("4.0");
+        }
+
+        if (typeCheck.contains("proprietor")) {
+            return new BigDecimal("13.0");
+        }
+
+        return BigDecimal.ZERO; // No match
     }
 
     @Override

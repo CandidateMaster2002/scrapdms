@@ -47,9 +47,18 @@ public class GstDetailsEntity {
     @Column(name = "last_api_sync")
     private LocalDateTime lastApiSync;
 
+    @Column(name = "aggregate_turnover")
+    private String aggregateTurnover;
+
+    @Column(name = "delay_count_gstr1")
+    private Integer delayCountGstr1;
+
+    @Column(name = "delay_count_gstr3b")
+    private Integer delayCountGstr3b;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
-    
+
     @OneToMany(mappedBy = "gstDetails", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<GstReturnsEntity> returns;
 }

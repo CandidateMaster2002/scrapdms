@@ -20,12 +20,11 @@ public class GstApiClient {
     }
 
     public ExternalGstDto.ApiResponse fetchTaxpayerDetails(String gstin) {
-        String url = "https://core.kashidigitalapis.com/gst-basic";
+        String url = "https://core.kashidigitalapis.com/gst-advance";
         String accessToken = "3403a7a2dc2770f8231bcc507264540d:a834dcefe7c77edc26f342bb87f61810";
 
         // Payload
-        String payload = "{\"gst\": \"" + gstin + "\"}"; // Simple string building, safer to use ObjectNode but this is
-                                                         // fine for strict input
+        String payload = "{\"gst\": \"" + gstin + "\"}";
 
         HttpHeaders headers = new HttpHeaders();
         headers.set("accessToken", accessToken);
@@ -35,16 +34,6 @@ public class GstApiClient {
         HttpEntity<String> entity = new HttpEntity<>(payload, headers);
 
         try {
-            // We expect the structure to match ExternalGstDto.ApiResponse (or close enough)
-            // If the external API structure is different, Jackson will fail or mapped
-            // fields will be null.
-            // Assumption: The JSON in prompt was "Use Exactly This", so we stick to that
-            // DTO.
-
-            // Note: If the real API returns "data" directly without "code"/"message"
-            // wrapper, we might need adjustment.
-            // But based on common Kashi Digital APIs, they often wrap.
-
             ResponseEntity<ExternalGstDto.ApiResponse> response = restTemplate.postForEntity(url, entity,
                     ExternalGstDto.ApiResponse.class);
 

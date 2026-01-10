@@ -36,31 +36,39 @@ public class GstFetchService {
         if (existing.isPresent()) {
             GstDetailsEntity entity = existing.get();
             // Freshness check can be added here (e.g., if lastSync > 10 days ago)
-            // For now, prompt implies "If data is stale" -> we can define stale as older than last scheduled run or just use scheduler logic.
+            // For now, prompt implies "If data is stale" -> we can define stale as older
+            // than last scheduled run or just use scheduler logic.
             // Requirement: "If GSTIN exists and data is fresh -> use DB data"
-            // Let's assume data is fresh if updated today. But for simplicity, we return DB. 
+            // Let's assume data is fresh if updated today. But for simplicity, we return
+            // DB.
             // The Scheduler handles the "Stale" updates ideally.
             // If explicit stale logic needed on read:
             if (entity.getLastApiSync().isAfter(LocalDateTime.now().minusDays(1))) {
-                 return entity;
+                return entity;
             }
         }
-        
+
         return fetchAndPersist(gstin);
     }
-    
+
     @Transactional
     public GstDetailsEntity fetchAndPersist(String gstin) {
         ExternalGstDto.ApiResponse apiResponse = gstApiClient.fetchTaxpayerDetails(gstin);
         ExternalGstDto.DataPayload data = apiResponse.getData();
-        
+
         GstDetailsEntity entity = mapToEntity(data);
         return gstDetailsRepository.save(entity);
     }
 
     private GstDetailsEntity mapToEntity(ExternalGstDto.DataPayload data) {
         ExternalGstDto.TaxpayerDetails td = data.getTaxpayerDetails();
-        
+        ExternalGstDto.BusinessPlaces bp = data.getBusiness_places();
+        ExternalGstDto.GstFilingDelaySummary delaySummary = (data.getTaxpayerReturnDetails() != null)
+                ? data.getTaxpayerReturnDetails().getGst_filing_delay_summary()
+                : null;
+
+        String address = (bp != null && bp.getPradr() != null) ? bp.getPradr().getAdr() : null;
+
         GstDetailsEntity entity = GstDetailsEntity.builder()
                 .gstin(td.getGstin())
                 .gstType(td.getCtb())
@@ -68,7 +76,10 @@ public class GstFetchService {
                 .legalName(td.getLgnm())
                 .registrationDate(parseDate(td.getRgdt()))
                 .gstStatus(td.getSts())
-                .address(td.getPradr().getAdr())
+                .address(address)
+                .aggregateTurnover(td.getAggreTurnOver())
+                .delayCountGstr1(delaySummary != null ? delaySummary.getGst_delay_count_GSTR1() : 0)
+                .delayCountGstr3b(delaySummary != null ? delaySummary.getGst_delay_count_GSTR3B() : 0)
                 .lastApiSync(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
@@ -81,6 +92,7 @@ public class GstFetchService {
                             .financialYear(fs.getFy())
                             .taxPeriod(fs.getTaxp())
                             .status(fs.getStatus())
+                            // .isDelayed(fs.is_delayed()) // If entity supports it in future
                             .createdAt(LocalDateTime.now())
                             .build())
                     .collect(Collectors.toList());
@@ -88,10 +100,10 @@ public class GstFetchService {
         } else {
             entity.setReturns(new ArrayList<>());
         }
-        
+
         return entity;
     }
-    
+
     private LocalDate parseDate(String dateStr) {
         try {
             return LocalDate.parse(dateStr, DateTimeFormatter.ofPattern("dd/MM/yyyy"));
