@@ -2,7 +2,7 @@ package com.company.grc.service;
 
 import com.company.grc.dto.ExternalGstDto;
 import com.company.grc.entity.GstDetailsEntity;
-import com.company.grc.entity.GstReturnsEntity;
+
 import com.company.grc.integration.GstApiClient;
 import com.company.grc.repository.GstDetailsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,22 +84,8 @@ public class GstFetchService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        if (data.getTaxpayerReturnDetails() != null && data.getTaxpayerReturnDetails().getFilingStatus() != null) {
-            List<GstReturnsEntity> returns = data.getTaxpayerReturnDetails().getFilingStatus().stream()
-                    .map(fs -> GstReturnsEntity.builder()
-                            .gstDetails(entity)
-                            .returnType(fs.getRtntype())
-                            .financialYear(fs.getFy())
-                            .taxPeriod(fs.getTaxp())
-                            .status(fs.getStatus())
-                            // .isDelayed(fs.is_delayed()) // If entity supports it in future
-                            .createdAt(LocalDateTime.now())
-                            .build())
-                    .collect(Collectors.toList());
-            entity.setReturns(returns);
-        } else {
-            entity.setReturns(new ArrayList<>());
-        }
+        // Detailed returns mapping removed as per requirement
+        // if (data.getTaxpayerReturnDetails() != null ...) logic deleted
 
         return entity;
     }

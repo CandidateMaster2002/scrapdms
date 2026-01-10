@@ -4,11 +4,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.CascadeType;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.List;
+
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -59,6 +58,4 @@ public class GstDetailsEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @OneToMany(mappedBy = "gstDetails", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<GstReturnsEntity> returns;
 }

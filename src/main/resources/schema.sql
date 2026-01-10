@@ -6,21 +6,16 @@ CREATE TABLE IF NOT EXISTS gst_details (
     trade_name VARCHAR(255),
     legal_name VARCHAR(255),
     registration_date DATE,
-    gst_status VARCHAR(20),
+    gst_status VARCHAR(100),
     address TEXT,
     last_api_sync TIMESTAMP,
+    aggregate_turnover VARCHAR(255),
+    delay_count_gstr1 INTEGER,
+    delay_count_gstr3b INTEGER,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS gst_returns (
-    id SERIAL PRIMARY KEY,
-    gstin VARCHAR(15) REFERENCES gst_details(gstin),
-    return_type VARCHAR(20), -- GSTR1, GSTR3B
-    financial_year VARCHAR(10),
-    tax_period VARCHAR(20),
-    status VARCHAR(20), -- Filed, Not Filed
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+
 
 CREATE TABLE IF NOT EXISTS grc_score (
     id SERIAL PRIMARY KEY,
@@ -30,5 +25,5 @@ CREATE TABLE IF NOT EXISTS grc_score (
     calculated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_gst_returns_gstin ON gst_returns(gstin);
+
 CREATE INDEX IF NOT EXISTS idx_grc_score_gstin ON grc_score(gstin);
