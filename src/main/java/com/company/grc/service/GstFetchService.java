@@ -54,6 +54,12 @@ public class GstFetchService {
     @Transactional
     public GstDetailsEntity fetchAndPersist(String gstin) {
         ExternalGstDto.ApiResponse apiResponse = gstApiClient.fetchTaxpayerDetails(gstin);
+
+        if (apiResponse == null || apiResponse.getData() == null) {
+            throw new RuntimeException("No data found for GSTIN: " + gstin +
+                    (apiResponse != null ? " (Message: " + apiResponse.getMessage() + ")" : ""));
+        }
+
         ExternalGstDto.DataPayload data = apiResponse.getData();
 
         GstDetailsEntity entity = mapToEntity(data);

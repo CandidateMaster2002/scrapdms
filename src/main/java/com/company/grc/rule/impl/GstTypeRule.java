@@ -16,22 +16,19 @@ public class GstTypeRule implements GrcRule {
 
         String type = details.getGstType().toLowerCase();
 
-        // RULE PRIORITY MATTERS (highest risk first)
-
-        // Proprietorship → 13
-        if (type.contains("proprietor") || type.contains("partnership")) {
+        if (type.contains("proprietor")) {
             return BigDecimal.valueOf(13);
         }
 
-        // Private Limited / Private → 2
-        if (type.contains("private")) {
-            return BigDecimal.valueOf(2);
+        // Proprietorship → 13
+        if (type.contains("partnership")) {
+            return BigDecimal.valueOf(10);
         }
 
         // Public Limited / Government / PSU → 2
         if (type.contains("public")
                 || type.contains("government")
-                || type.contains("psu")) {
+                || type.contains("psu") || type.contains("private")) {
             return BigDecimal.valueOf(2);
         }
 

@@ -38,7 +38,7 @@ public class TurnoverRule implements GrcRule {
         } else if (turnoverValue >= 5.0 && turnoverValue < 50.0) {
             return new BigDecimal("5.0");
         } else if (turnoverValue >= 50.0 && turnoverValue <= 100.0) {
-            return new BigDecimal("2.0");
+            return new BigDecimal("3.0");
         } else {
             // > 100
             return new BigDecimal("1.0");
