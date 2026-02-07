@@ -1,6 +1,7 @@
 package com.company.grc.integration;
 
 import com.company.grc.dto.ExternalGstDto;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -15,13 +16,15 @@ public class GstApiClient {
 
     private final RestTemplate restTemplate;
 
+    @Value("${gst.api.access-token}")
+    private String accessToken;
+
     public GstApiClient() {
         this.restTemplate = new RestTemplate();
     }
 
     public ExternalGstDto.ApiResponse fetchTaxpayerDetails(String gstin) {
         String url = "https://core.kashidigitalapis.com/gst-advance";
-        String accessToken = "9bb9ee47161fd23838bcebac9bb73e11:3c97ec080047dcb4641d32d1f438c162";
 
         // Payload
         String payload = "{\"gst\": \"" + gstin + "\"}";
