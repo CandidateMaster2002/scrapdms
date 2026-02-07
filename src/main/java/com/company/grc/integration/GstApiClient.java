@@ -21,7 +21,7 @@ public class GstApiClient {
 
     public ExternalGstDto.ApiResponse fetchTaxpayerDetails(String gstin) {
         String url = "https://core.kashidigitalapis.com/gst-advance";
-        String accessToken = "3403a7a2dc2770f8231bcc507264540d:a834dcefe7c77edc26f342bb87f61810";
+        String accessToken = "9bb9ee47161fd23838bcebac9bb73e11:3c97ec080047dcb4641d32d1f438c162";
 
         // Payload
         String payload = "{\"gst\": \"" + gstin + "\"}";

@@ -20,36 +20,38 @@ public class MonthlyGstSyncScheduler {
     private final GrcCalculationService grcCalculationService;
 
     @Autowired
-    public MonthlyGstSyncScheduler(GstDetailsRepository gstDetailsRepository, 
-                                   GstFetchService gstFetchService, 
-                                   GrcCalculationService grcCalculationService) {
+    public MonthlyGstSyncScheduler(GstDetailsRepository gstDetailsRepository,
+            GstFetchService gstFetchService,
+            GrcCalculationService grcCalculationService) {
         this.gstDetailsRepository = gstDetailsRepository;
         this.gstFetchService = gstFetchService;
         this.grcCalculationService = grcCalculationService;
     }
 
-    @Scheduled(cron = "0 0 2 11,21 * ?")
+    @Scheduled(cron = "0 0 0 11,21 * ?")
     public void runBiMonthlySync() {
         log.info("Starting Bi-Monthly GST Sync...");
-        
-        List<GstDetailsEntity> allGstins = gstDetailsRepository.findAll();
-        
-        for (GstDetailsEntity entity : allGstins) {
+
+        // Optimize: Fetch only necessary IDs (GSTINs) to save memory
+        List<String> allGstins = gstDetailsRepository.findAllGstins();
+
+        // Optimize: Use parallel stream for concurrent processing
+        // Note: For very large datasets, consider using a custom ExecutorService or
+        // batch processing
+        allGstins.parallelStream().forEach(gstin -> {
             try {
-                String gstin = entity.getGstin();
-                
                 // 1. Force update from API
                 gstFetchService.fetchAndPersist(gstin);
-                
+
                 // 2. Recalculate Score
                 grcCalculationService.recalculateStoredScore(gstin);
-                
+
                 log.info("Successfully synced and recalculated for GSTIN: {}", gstin);
             } catch (Exception e) {
-                log.error("Failed to sync for GSTIN: {}", entity.getGstin(), e);
+                log.error("Failed to sync for GSTIN: {}", gstin, e);
             }
-        }
-        
+        });
+
         log.info("Bi-Monthly GST Sync Completed.");
     }
 }

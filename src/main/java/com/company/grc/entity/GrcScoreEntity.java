@@ -24,8 +24,8 @@ public class GrcScoreEntity {
     @Column(name = "gstin", nullable = false, length = 15)
     private String gstin;
 
-    @Column(columnDefinition = "DECIMAL(5,2)")
-    private BigDecimal score;
+    @Column(name = "score")
+    private Integer score;
 
     @Column(name = "score_version")
     private String scoreVersion;

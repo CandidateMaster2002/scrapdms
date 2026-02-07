@@ -34,18 +34,7 @@ public class GstFetchService {
         Optional<GstDetailsEntity> existing = gstDetailsRepository.findById(gstin);
 
         if (existing.isPresent()) {
-            GstDetailsEntity entity = existing.get();
-            // Freshness check can be added here (e.g., if lastSync > 10 days ago)
-            // For now, prompt implies "If data is stale" -> we can define stale as older
-            // than last scheduled run or just use scheduler logic.
-            // Requirement: "If GSTIN exists and data is fresh -> use DB data"
-            // Let's assume data is fresh if updated today. But for simplicity, we return
-            // DB.
-            // The Scheduler handles the "Stale" updates ideally.
-            // If explicit stale logic needed on read:
-            if (entity.getLastApiSync().isAfter(LocalDateTime.now().minusDays(1))) {
-                return entity;
-            }
+            return existing.get();
         }
 
         return fetchAndPersist(gstin);

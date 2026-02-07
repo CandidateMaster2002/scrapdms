@@ -22,7 +22,7 @@ public class ApiDto {
     @AllArgsConstructor
     public static class GrcResponse {
         private String gstin;
-        private BigDecimal grcScore;
+        private Integer grcScore;
         private String scoreVersion;
         private LocalDateTime calculatedAt;
     }

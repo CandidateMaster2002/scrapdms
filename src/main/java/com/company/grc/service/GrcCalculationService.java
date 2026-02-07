@@ -54,7 +54,8 @@ public class GrcCalculationService {
         }
 
         // 3. Calculate Score
-        BigDecimal score = ruleEngine.calculateScore(details);
+        BigDecimal rawScore = ruleEngine.calculateScore(details);
+        Integer score = rawScore.setScale(0, java.math.RoundingMode.HALF_UP).intValue();
 
         // 4. Persist Score
         GrcScoreEntity scoreEntity = GrcScoreEntity.builder()
@@ -89,7 +90,8 @@ public class GrcCalculationService {
         // then call this.
 
         GstDetailsEntity details = gstFetchService.getGstDetails(gstin); // Will get fresh data if updated
-        BigDecimal score = ruleEngine.calculateScore(details);
+        BigDecimal rawScore = ruleEngine.calculateScore(details);
+        Integer score = rawScore.setScale(0, java.math.RoundingMode.HALF_UP).intValue();
 
         GrcScoreEntity scoreEntity = GrcScoreEntity.builder()
                 .gstin(gstin)
