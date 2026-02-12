@@ -13,16 +13,16 @@ public class FilingDelayRule implements GrcRule {
         BigDecimal score = BigDecimal.ZERO;
 
         // GSTR-1 Risk Score
-        // 0 -> add 0, >0 -> add 13
+        // 0 or 1 -> add 0, >1 -> add 13.5
         int gstr1Delay = details.getDelayCountGstr1() != null ? details.getDelayCountGstr1() : 0;
-        if (gstr1Delay > 0) {
+        if (gstr1Delay > 1) {
             score = score.add(new BigDecimal("13.0"));
         }
 
         // GSTR-3B Risk Score
-        // 0 -> add 0, >0 -> add 9.75
+        // 0 or 1 -> add 0, >1 -> add 13.5
         int gstr3bDelay = details.getDelayCountGstr3b() != null ? details.getDelayCountGstr3b() : 0;
-        if (gstr3bDelay > 0) {
+        if (gstr3bDelay > 1) {
             score = score.add(new BigDecimal("9.75"));
         }
 
