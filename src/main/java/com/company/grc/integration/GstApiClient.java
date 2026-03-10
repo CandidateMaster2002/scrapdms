@@ -24,7 +24,7 @@ public class GstApiClient {
     }
 
     public ExternalGstDto.ApiResponse fetchTaxpayerDetails(String gstin) {
-        String url = "https://core.kashidigitalapis.com/gst-advance";
+        String url = "https://core.kashidigitalapis.com/gst-basic";
 
         // Payload
         String payload = "{\"gst\": \"" + gstin + "\"}";

@@ -17,7 +17,6 @@ public class ExternalGstDto {
     public static class DataPayload {
         private TaxpayerDetails taxpayerDetails;
         private TaxpayerReturnDetails taxpayerReturnDetails;
-        private BusinessPlaces business_places;
         private GoodsService goods_service;
     }
 
@@ -30,25 +29,12 @@ public class ExternalGstDto {
         private String rgdt;
         private String sts;
         private String aggreTurnOver; // New field
-        private Address contacted; // Using map for simplicity or struct? JSON says "contacted" object.
-        // There is 'pradr' in business_places, 'contacted' in taxpayerDetails but
-        // prompt says pradr logic used address?
-        // Old Code used "pradr" inside taxpayerDetails, but new JSON has it in
-        // business_places.
-        // Wait, looking at JSON:
-        // taxpayerDetails has { ..., "contacted": {...}, ... }
-        // business_places has { "pradr": { "adr": ... } }
-        // Let's align structure exactly.
+        private Address pradr;
     }
 
     @Data
     public static class Address {
         private String adr;
-    }
-
-    @Data
-    public static class BusinessPlaces {
-        private Address pradr; // { "adr": ... }
     }
 
     @Data
@@ -59,13 +45,6 @@ public class ExternalGstDto {
     @Data
     public static class TaxpayerReturnDetails {
         private List<FilingStatus> filingStatus;
-        private GstFilingDelaySummary gst_filing_delay_summary;
-    }
-
-    @Data
-    public static class GstFilingDelaySummary {
-        private Integer gst_delay_count_GSTR1;
-        private Integer gst_delay_count_GSTR3B;
     }
 
     @Data

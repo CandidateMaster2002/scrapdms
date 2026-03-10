@@ -57,12 +57,11 @@ public class GstFetchService {
 
     private GstDetailsEntity mapToEntity(ExternalGstDto.DataPayload data) {
         ExternalGstDto.TaxpayerDetails td = data.getTaxpayerDetails();
-        ExternalGstDto.BusinessPlaces bp = data.getBusiness_places();
-        ExternalGstDto.GstFilingDelaySummary delaySummary = (data.getTaxpayerReturnDetails() != null)
-                ? data.getTaxpayerReturnDetails().getGst_filing_delay_summary()
-                : null;
 
-        String address = (bp != null && bp.getPradr() != null) ? bp.getPradr().getAdr() : null;
+        String address = (td != null && td.getPradr() != null) ? td.getPradr().getAdr() : null;
+
+        int delayCountGstr1 = calculateDelayCount(data.getTaxpayerReturnDetails(), "GSTR1", 11);
+        int delayCountGstr3b = calculateDelayCount(data.getTaxpayerReturnDetails(), "GSTR3B", 20);
 
         GstDetailsEntity entity = GstDetailsEntity.builder()
                 .gstin(td.getGstin())
@@ -73,17 +72,81 @@ public class GstFetchService {
                 .gstStatus(td.getSts())
                 .address(address)
                 .aggregateTurnover(td.getAggreTurnOver())
-                .delayCountGstr1((delaySummary != null && delaySummary.getGst_delay_count_GSTR1() != null)
-                        ? delaySummary.getGst_delay_count_GSTR1()
-                        : 0)
-                .delayCountGstr3b((delaySummary != null && delaySummary.getGst_delay_count_GSTR3B() != null)
-                        ? delaySummary.getGst_delay_count_GSTR3B()
-                        : 0)
+                .delayCountGstr1(delayCountGstr1)
+                .delayCountGstr3b(delayCountGstr3b)
                 .lastApiSync(LocalDateTime.now())
                 .createdAt(LocalDateTime.now())
                 .build();
 
         return entity;
+    }
+
+    private int calculateDelayCount(ExternalGstDto.TaxpayerReturnDetails returnDetails, String returnType,
+            int expectedDueDay) {
+        if (returnDetails == null || returnDetails.getFilingStatus() == null) {
+            return 0;
+        }
+
+        int delayCount = 0;
+        DateTimeFormatter dofFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+
+        for (ExternalGstDto.FilingStatus status : returnDetails.getFilingStatus()) {
+            if (returnType.equalsIgnoreCase(status.getRtntype()) && "Filed".equalsIgnoreCase(status.getStatus())) {
+                try {
+                    LocalDate dateOfFiling = LocalDate.parse(status.getDof(), dofFormatter);
+                    String taxp = status.getTaxp();
+                    int month = getMonthNumber(taxp);
+                    if (month > 0) {
+                        String fy = status.getFy(); // "2025-2026"
+                        int year = Integer.parseInt(fy.substring(0, 4));
+                        if (month <= 3) {
+                            year++; // Jan, Feb, Mar belong to the second part of FY
+                        }
+
+                        LocalDate dueDate = LocalDate.of(year, month, 1).plusMonths(1).withDayOfMonth(expectedDueDay);
+                        if (dateOfFiling.isAfter(dueDate)) {
+                            delayCount++;
+                        }
+                    }
+                } catch (Exception e) {
+                    // ignore parse errors
+                }
+            }
+        }
+        return delayCount;
+    }
+
+    private int getMonthNumber(String monthName) {
+        if (monthName == null)
+            return 0;
+        switch (monthName.toLowerCase()) {
+            case "january":
+                return 1;
+            case "february":
+                return 2;
+            case "march":
+                return 3;
+            case "april":
+                return 4;
+            case "may":
+                return 5;
+            case "june":
+                return 6;
+            case "july":
+                return 7;
+            case "august":
+                return 8;
+            case "september":
+                return 9;
+            case "october":
+                return 10;
+            case "november":
+                return 11;
+            case "december":
+                return 12;
+            default:
+                return 0;
+        }
     }
 
     private LocalDate parseDate(String dateStr) {

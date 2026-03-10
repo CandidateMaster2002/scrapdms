@@ -22,4 +22,10 @@ public class GrcController {
         ApiDto.GrcResponse response = grcCalculationService.calculateScore(request.getGstin());
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/recalculate-all")
+    public ResponseEntity<String> recalculateAll() {
+        grcCalculationService.recalculateAll();
+        return ResponseEntity.ok("Recalculation triggered for all GST records.");
+    }
 }

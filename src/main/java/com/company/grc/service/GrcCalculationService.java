@@ -4,6 +4,7 @@ import com.company.grc.dto.ApiDto;
 import com.company.grc.entity.GrcScoreEntity;
 import com.company.grc.entity.GstDetailsEntity;
 import com.company.grc.repository.GrcScoreRepository;
+import com.company.grc.repository.GstDetailsRepository;
 import com.company.grc.rule.GrcRuleEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,16 @@ public class GrcCalculationService {
     private final GstFetchService gstFetchService;
     private final GrcRuleEngine ruleEngine;
     private final GrcScoreRepository grcScoreRepository;
+    private final GstDetailsRepository gstDetailsRepository;
 
     @Autowired
     public GrcCalculationService(GstFetchService gstFetchService, GrcRuleEngine ruleEngine,
-            GrcScoreRepository grcScoreRepository) {
+            GrcScoreRepository grcScoreRepository,
+            GstDetailsRepository gstDetailsRepository) {
         this.gstFetchService = gstFetchService;
         this.ruleEngine = ruleEngine;
         this.grcScoreRepository = grcScoreRepository;
+        this.gstDetailsRepository = gstDetailsRepository;
     }
 
     @Transactional
@@ -100,5 +104,17 @@ public class GrcCalculationService {
                 .calculatedAt(LocalDateTime.now())
                 .build();
         grcScoreRepository.save(scoreEntity);
+    }
+
+    /**
+     * Bulk recalculates scores for all GSTINs in the database.
+     * This bypasses any caching since it's assumed rules/formula has changed.
+     */
+    @Transactional
+    public void recalculateAll() {
+        java.util.List<String> allGstins = gstDetailsRepository.findAllGstins();
+        for (String gstin : allGstins) {
+            recalculateStoredScore(gstin);
+        }
     }
 }
