@@ -28,7 +28,7 @@ public class MonthlyGstSyncScheduler {
         this.grcCalculationService = grcCalculationService;
     }
 
-    @Scheduled(cron = "0 0 0 11,21 * ?")
+    @Scheduled(cron = "${gst.sync.cron:0 0 0 11,21 * ?}")
     public void runBiMonthlySync() {
         log.info("Starting Bi-Monthly GST Sync...");
 
