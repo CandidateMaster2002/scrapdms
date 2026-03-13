@@ -36,7 +36,8 @@ public class GrcScoreTest {
                 new GstTenureRule(svc),
                 new TurnoverRule(svc),
                 new GstStatusRule(svc),
-                new FilingDelayRule(svc));
+                new Gstr1FilingRule(svc),
+                new Gstr3bFilingRule(svc));
     }
 
     @Test
