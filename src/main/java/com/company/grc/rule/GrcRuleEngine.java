@@ -7,13 +7,14 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.util.List;
 
+/**
+ * Aggregates all GrcRule implementations and sums their scores.
+ * Total possible score = 100 (no additional multiplier needed).
+ */
 @Component
 public class GrcRuleEngine {
 
     private final List<GrcRule> rules;
-    
-    // Configurable multiplier could be moved to properties
-    private static final BigDecimal FINAL_MULTIPLIER = new BigDecimal("1.53"); 
 
     @Autowired
     public GrcRuleEngine(List<GrcRule> rules) {
@@ -22,13 +23,17 @@ public class GrcRuleEngine {
 
     public BigDecimal calculateScore(GstDetailsEntity details) {
         BigDecimal totalScore = BigDecimal.ZERO;
-
         for (GrcRule rule : rules) {
-            BigDecimal ruleScore = rule.apply(details);
-            totalScore = totalScore.add(ruleScore);
+            totalScore = totalScore.add(rule.apply(details));
         }
+        return totalScore;
+    }
 
-        // Apply final multiplier
-        return totalScore.multiply(FINAL_MULTIPLIER);
+    public java.util.Map<String, BigDecimal> calculateBreakdown(GstDetailsEntity details) {
+        java.util.Map<String, BigDecimal> breakdown = new java.util.LinkedHashMap<>();
+        for (GrcRule rule : rules) {
+            breakdown.put(rule.getRuleName(), rule.apply(details));
+        }
+        return breakdown;
     }
 }

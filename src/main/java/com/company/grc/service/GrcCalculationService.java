@@ -1,5 +1,6 @@
 package com.company.grc.service;
 
+import com.company.grc.config.GrcScoreConfig;
 import com.company.grc.dto.ApiDto;
 import com.company.grc.entity.GrcScoreEntity;
 import com.company.grc.entity.GstDetailsEntity;
@@ -12,10 +13,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.Optional;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class GrcCalculationService {
@@ -24,127 +25,94 @@ public class GrcCalculationService {
     private final GrcRuleEngine ruleEngine;
     private final GrcScoreRepository grcScoreRepository;
     private final GstDetailsRepository gstDetailsRepository;
+    private final GrcScoreConfig config;
 
     @Autowired
-    public GrcCalculationService(GstFetchService gstFetchService, GrcRuleEngine ruleEngine,
+    public GrcCalculationService(GstFetchService gstFetchService,
+            GrcRuleEngine ruleEngine,
             GrcScoreRepository grcScoreRepository,
-            GstDetailsRepository gstDetailsRepository) {
+            GstDetailsRepository gstDetailsRepository,
+            GrcScoreConfig config) {
         this.gstFetchService = gstFetchService;
         this.ruleEngine = ruleEngine;
         this.grcScoreRepository = grcScoreRepository;
         this.gstDetailsRepository = gstDetailsRepository;
+        this.config = config;
     }
 
-    @Transactional
-    public ApiDto.GrcResponse forceCalculateScore(String gstin) {
-        GstDetailsEntity details = gstFetchService.fetchAndPersist(gstin);
-
-        BigDecimal rawScore = ruleEngine.calculateScore(details);
-        Integer score = rawScore.setScale(0, java.math.RoundingMode.HALF_UP).intValue();
-
-        Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(gstin);
-        String nextVersion = "v1";
-        if (existingScoreOpt.isPresent()) {
-            String currentVersion = existingScoreOpt.get().getScoreVersion();
-            if (currentVersion != null && currentVersion.startsWith("v")) {
-                try {
-                    int dashIndex = currentVersion.indexOf('-');
-                    String baseVersion = dashIndex > 0 ? currentVersion.substring(1, dashIndex)
-                            : currentVersion.substring(1);
-                    int versionNum = Integer.parseInt(baseVersion);
-                    nextVersion = "v" + (versionNum + 1);
-                } catch (NumberFormatException e) {
-                    nextVersion = "v1";
-                }
-            }
-        }
-
-        GrcScoreEntity scoreEntity = GrcScoreEntity.builder()
-                .gstin(gstin)
-                .score(score)
-                .scoreVersion(nextVersion)
-                .calculatedAt(LocalDateTime.now())
-                .build();
-
-        grcScoreRepository.save(scoreEntity);
-
-        return ApiDto.GrcResponse.builder()
-                .gstin(gstin)
-                .grcScore(score)
-                .scoreVersion(nextVersion)
-                .calculatedAt(scoreEntity.getCalculatedAt())
-                .build();
-    }
-
+    /**
+     * Main entry point: get or create a GRC score for a GSTIN.
+     *
+     * Flow:
+     * 1. Check if a GRC score row already exists.
+     * 2a. If it exists and is NOT a DUMMY — return the existing score (no
+     * recalculation).
+     * 2b. If it exists and IS a DUMMY — the user hasn't edited details yet; return
+     * dummy.
+     * 3. If no score exists → create stub GST details + insert DUMMY score (15).
+     */
     @Transactional
     public ApiDto.GrcResponse calculateScore(String gstin) {
-        // 1. Fetch Data (DB or fresh from API if needed)
-        GstDetailsEntity details = gstFetchService.getGstDetails(gstin);
-
-        // 2. Check for existing fresh score
-        // 2. Check for existing fresh score
         Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(gstin);
 
         if (existingScoreOpt.isPresent()) {
             GrcScoreEntity existingScore = existingScoreOpt.get();
-            // If details have not been updated since the last score calculation, return the
-            // cached score.
-            // details.getLastApiSync() check handles the "update on 11/21" requirement:
-            // if details updated, sync time > score time, causing recalculation.
-            if (details.getLastApiSync() != null && existingScore.getCalculatedAt().isAfter(details.getLastApiSync())) {
-                return ApiDto.GrcResponse.builder()
-                        .gstin(gstin)
-                        .grcScore(existingScore.getScore())
-                        .scoreVersion(existingScore.getScoreVersion())
-                        .calculatedAt(existingScore.getCalculatedAt())
-                        .build();
-            }
+            return ApiDto.GrcResponse.builder()
+                    .gstin(gstin)
+                    .grcScore(existingScore.getScore())
+                    .calculatedAt(existingScore.getCalculatedAt())
+                    .build();
         }
 
-        // 3. Calculate Score
-        BigDecimal rawScore = ruleEngine.calculateScore(details);
-        Integer score = rawScore.setScale(0, java.math.RoundingMode.HALF_UP).intValue();
+        // New GSTIN — create stub GST details with empty values
+        gstFetchService.createStubEntry(gstin);
 
-        // 4. Derive version
-        String nextVersion = "v1";
-        if (existingScoreOpt.isPresent()) {
-            String currentVersion = existingScoreOpt.get().getScoreVersion();
-            if (currentVersion != null && currentVersion.startsWith("v")) {
-                try {
-                    int versionNum = Integer.parseInt(currentVersion.substring(1));
-                    nextVersion = "v" + (versionNum + 1);
-                } catch (NumberFormatException e) {
-                    nextVersion = "v1";
-                }
-            }
-        }
-
-        // 5. Persist Score
-        GrcScoreEntity scoreEntity = GrcScoreEntity.builder()
+        // Insert dummy score
+        GrcScoreEntity dummyScore = GrcScoreEntity.builder()
                 .gstin(gstin)
-                .score(score)
-                .scoreVersion(nextVersion)
+                .score(config.DUMMY_DEFAULT_SCORE)
                 .calculatedAt(LocalDateTime.now())
+                .updatedBy("Dummy")
                 .build();
+        grcScoreRepository.save(dummyScore);
 
-        grcScoreRepository.save(scoreEntity);
-
-        // 6. Return DTO
         return ApiDto.GrcResponse.builder()
                 .gstin(gstin)
-                .grcScore(score)
-                .scoreVersion(nextVersion)
+                .grcScore(config.DUMMY_DEFAULT_SCORE)
+                .calculatedAt(dummyScore.getCalculatedAt())
+                .build();
+    }
+
+    /**
+     * Forces a recalculation of the score for an existing GSTIN based on current DB
+     * values.
+     * Used by the /fetch endpoint and bulk recalculate.
+     */
+    @Transactional
+    public ApiDto.GrcResponse forceCalculateScore(String gstin) {
+        // Ensure the GSTIN exists (creates stub if not)
+        gstFetchService.getGstDetails(gstin);
+        recalculateStoredScore(gstin);
+
+        GrcScoreEntity scoreEntity = grcScoreRepository.findById(gstin)
+                .orElseThrow(() -> new RuntimeException("Score not found after recalculation for: " + gstin));
+
+        return ApiDto.GrcResponse.builder()
+                .gstin(gstin)
+                .grcScore(scoreEntity.getScore())
                 .calculatedAt(scoreEntity.getCalculatedAt())
                 .build();
     }
 
     @Transactional(readOnly = true)
-    public ApiDto.GstAppDetailsResponse getDetailsWithScore(String gstin) {
-        GstDetailsEntity details = gstDetailsRepository.findById(gstin)
-                .orElseThrow(() -> new RuntimeException("GSTIN not found"));
+    public ApiDto.GstAppDetailsResponse getDetailsWithScore(GstDetailsEntity details) {
+        return getDetailsWithScore(details, false);
+    }
 
+    private ApiDto.GstAppDetailsResponse getDetailsWithScore(GstDetailsEntity details, boolean includeBreakdown) {
+        String gstin = details.getGstin();
         ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder = ApiDto.GstAppDetailsResponse.builder()
-                .gstin(details.getGstin())
+                .gstin(gstin)
                 .gstType(details.getGstType())
                 .tradeName(details.getTradeName())
                 .legalName(details.getLegalName())
@@ -158,24 +126,65 @@ public class GrcCalculationService {
 
         grcScoreRepository.findById(gstin).ifPresent(score -> {
             builder.grcScore(score.getScore())
-                    .scoreVersion(score.getScoreVersion())
-                    .scoreCalculatedAt(score.getCalculatedAt());
+                    .scoreCalculatedAt(score.getCalculatedAt())
+                    .updatedBy(score.getUpdatedBy());
+            if (includeBreakdown) {
+                try {
+                    builder.scoreBreakdown(ruleEngine.calculateBreakdown(details));
+                } catch (Exception e) {
+                    System.err.println("Error calculating breakdown for " + gstin + ": " + e.getMessage());
+                }
+            }
         });
 
         return builder.build();
     }
 
     @Transactional(readOnly = true)
+    public ApiDto.GstAppDetailsResponse getDetailsWithScore(String gstin) {
+        GstDetailsEntity details = gstDetailsRepository.findById(gstin)
+                .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
+        return getDetailsWithScore(details, true);
+    }
+
+    @Transactional(readOnly = true)
     public List<ApiDto.GstAppDetailsResponse> getAllDetailsWithScores() {
-        return gstDetailsRepository.findAll().stream()
-                .map(details -> getDetailsWithScore(details.getGstin()))
+        List<GstDetailsEntity> allDetails = gstDetailsRepository.findAll();
+        // Batch fetch all scores into memory to avoid N+1 findById queries
+        Map<String, GrcScoreEntity> scoreMap = grcScoreRepository.findAll().stream()
+                .collect(Collectors.toMap(GrcScoreEntity::getGstin, s -> s));
+
+        return allDetails.stream()
+                .map(details -> {
+                    ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder = ApiDto.GstAppDetailsResponse.builder()
+                            .gstin(details.getGstin())
+                            .tradeName(details.getTradeName())
+                            .legalName(details.getLegalName())
+                            .gstStatus(details.getGstStatus())
+                            .delayCountGstr1(details.getDelayCountGstr1())
+                            .delayCountGstr3b(details.getDelayCountGstr3b());
+
+                    GrcScoreEntity score = scoreMap.get(details.getGstin());
+                    if (score != null) {
+                        builder.grcScore(score.getScore())
+                                .scoreCalculatedAt(score.getCalculatedAt())
+                                .updatedBy(score.getUpdatedBy());
+                    }
+                    
+                    // Fields needed for Quick Edit view toggle
+                    builder.registrationDate(details.getRegistrationDate())
+                           .aggregateTurnover(details.getAggregateTurnover())
+                           .gstType(details.getGstType())
+                           .address(details.getAddress());
+                    return builder.build();
+                })
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public ApiDto.GstAppDetailsResponse updateGstDetails(String gstin, ApiDto.GstDetailsUpdateRequest request) {
         GstDetailsEntity details = gstDetailsRepository.findById(gstin)
-                .orElseThrow(() -> new RuntimeException("GSTIN not found"));
+                .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
 
         if (request.getGstType() != null)
             details.setGstType(request.getGstType());
@@ -196,10 +205,12 @@ public class GrcCalculationService {
         if (request.getDelayCountGstr3b() != null)
             details.setDelayCountGstr3b(request.getDelayCountGstr3b());
 
+        // Mark as user-updated
+        details.setLastApiSync(LocalDateTime.now());
         gstDetailsRepository.save(details);
 
-        // Recalculate based on newly saved details
-        recalculateStoredScore(gstin);
+        // Recalculate score based on newly saved details
+        recalculateStoredScore(gstin, request.getUpdatedBy());
 
         return getDetailsWithScore(gstin);
     }
@@ -209,28 +220,11 @@ public class GrcCalculationService {
         gstDetailsRepository.findById(gstin)
                 .orElseThrow(() -> new RuntimeException("GSTIN not found. Cannot override score."));
 
-        Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(gstin);
-        String nextVersion = "v1-manual";
-        if (existingScoreOpt.isPresent()) {
-            String currentVersion = existingScoreOpt.get().getScoreVersion();
-            if (currentVersion != null && currentVersion.startsWith("v")) {
-                try {
-                    int dashIndex = currentVersion.indexOf('-');
-                    String baseVersion = dashIndex > 0 ? currentVersion.substring(1, dashIndex)
-                            : currentVersion.substring(1);
-                    int versionNum = Integer.parseInt(baseVersion);
-                    nextVersion = "v" + (versionNum + 1) + "-manual";
-                } catch (NumberFormatException e) {
-                    nextVersion = "v1-manual";
-                }
-            }
-        }
-
         GrcScoreEntity scoreEntity = GrcScoreEntity.builder()
                 .gstin(gstin)
                 .score(newScore)
-                .scoreVersion(nextVersion)
                 .calculatedAt(LocalDateTime.now())
+                .updatedBy("SUPER_ADMIN_MANUAL")
                 .build();
         grcScoreRepository.save(scoreEntity);
 
@@ -238,59 +232,44 @@ public class GrcCalculationService {
     }
 
     /**
-     * Used by Scheduler
+     * Recalculates and persists the GRC score for a given GSTIN using current DB
+     * values.
+     * Increments the version number (or initialises to v1 if DUMMY_VALUE).
      */
     @Transactional
-    public void recalculateStoredScore(String gstin) {
-        // Force fetch from API done by caller (Scheduler) usually,
-        // but here we just need to recalculate based on whatever is in DB
-        // (assuming DB was just updated).
+    public void recalculateStoredScore(String gstin, String updatedBy) {
+        GstDetailsEntity details = gstDetailsRepository.findById(gstin)
+                .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
 
-        // To stay pure to requirements, the scheduler will call
-        // gstFetchService.fetchAndPersist(gstin) first
-        // then call this.
-
-        GstDetailsEntity details = gstFetchService.getGstDetails(gstin); // Will get fresh data if updated
         BigDecimal rawScore = ruleEngine.calculateScore(details);
         Integer score = rawScore.setScale(0, java.math.RoundingMode.HALF_UP).intValue();
-
-        Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(gstin);
-        String nextVersion = "v1";
-        if (existingScoreOpt.isPresent()) {
-            String currentVersion = existingScoreOpt.get().getScoreVersion();
-            if (currentVersion != null && currentVersion.startsWith("v")) {
-                try {
-                    int versionNum = Integer.parseInt(currentVersion.substring(1));
-                    nextVersion = "v" + (versionNum + 1);
-                } catch (NumberFormatException e) {
-                    nextVersion = "v1";
-                }
-            }
-        }
 
         GrcScoreEntity scoreEntity = GrcScoreEntity.builder()
                 .gstin(gstin)
                 .score(score)
-                .scoreVersion(nextVersion)
                 .calculatedAt(LocalDateTime.now())
+                .updatedBy(updatedBy)
                 .build();
         grcScoreRepository.save(scoreEntity);
     }
 
     @Transactional
+    public void recalculateStoredScore(String gstin) {
+        recalculateStoredScore(gstin, null);
+    }
+
+    @Transactional
     public void deleteGstDetails(String gstin) {
-        // Delete score first due to foreign key constraints if any (or just logically cleaner)
         grcScoreRepository.deleteById(gstin);
         gstDetailsRepository.deleteById(gstin);
     }
 
     /**
      * Bulk recalculates scores for all GSTINs in the database.
-     * This bypasses any caching since it's assumed rules/formula has changed.
      */
     @Transactional
     public void recalculateAll() {
-        java.util.List<String> allGstins = gstDetailsRepository.findAllGstins();
+        List<String> allGstins = gstDetailsRepository.findAllGstins();
         for (String gstin : allGstins) {
             recalculateStoredScore(gstin);
         }

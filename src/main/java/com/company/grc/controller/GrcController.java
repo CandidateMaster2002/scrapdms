@@ -1,11 +1,14 @@
 package com.company.grc.controller;
 
 import com.company.grc.dto.ApiDto;
+import com.company.grc.entity.GrcRuleConfigEntity;
 import com.company.grc.service.GrcCalculationService;
+import com.company.grc.service.GrcRuleConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/grc")
@@ -13,15 +16,23 @@ import java.util.List;
 public class GrcController {
 
     private final GrcCalculationService grcCalculationService;
+    private final GrcRuleConfigService ruleConfigService;
 
     @Autowired
-    public GrcController(GrcCalculationService grcCalculationService) {
+    public GrcController(GrcCalculationService grcCalculationService, GrcRuleConfigService ruleConfigService) {
         this.grcCalculationService = grcCalculationService;
+        this.ruleConfigService = ruleConfigService;
     }
 
     @PostMapping("/calculate")
     public ResponseEntity<ApiDto.GrcResponse> calculateScore(@RequestBody ApiDto.GrcRequest request) {
         ApiDto.GrcResponse response = grcCalculationService.calculateScore(request.getGstin());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/recalculate/{gstin}")
+    public ResponseEntity<ApiDto.GrcResponse> recalculateScore(@PathVariable String gstin) {
+        ApiDto.GrcResponse response = grcCalculationService.forceCalculateScore(gstin);
         return ResponseEntity.ok(response);
     }
 
@@ -60,16 +71,32 @@ public class GrcController {
         }
 
         for (String gstin : request.getGstins()) {
-            grcCalculationService.forceCalculateScore(gstin);
+            // Creates a stub entry with default score if GSTIN is new,
+            // or recalculates score from existing DB values if GSTIN already exists.
+            grcCalculationService.calculateScore(gstin);
         }
 
-        return ResponseEntity.ok("Successfully triggered manual fetch from external API for "
-                + request.getGstins().size() + " GSTIN(s).");
+        return ResponseEntity.ok("Processed " + request.getGstins().size()
+                + " GSTIN(s). New entries created with default score; existing entries left unchanged.");
     }
 
     @DeleteMapping("/details/{gstin}")
     public ResponseEntity<String> deleteGstDetails(@PathVariable String gstin) {
         grcCalculationService.deleteGstDetails(gstin);
         return ResponseEntity.ok("Successfully deleted details for GSTIN: " + gstin);
+    }
+
+    // ── Rule Config Endpoints ─────────────────────────────────────────────
+
+    /** Returns all configurable rule parameters with their current values. */
+    @GetMapping("/rule-config")
+    public ResponseEntity<List<GrcRuleConfigEntity>> getRuleConfig() {
+        return ResponseEntity.ok(ruleConfigService.getAllConfig());
+    }
+
+    /** Updates rule config values. Body: { "TYPE_MAX": 10.0, "TYPE_PROPR_MULT": 1.0, ... } */
+    @PutMapping("/rule-config")
+    public ResponseEntity<List<GrcRuleConfigEntity>> updateRuleConfig(@RequestBody Map<String, Double> updates) {
+        return ResponseEntity.ok(ruleConfigService.saveConfig(updates));
     }
 }

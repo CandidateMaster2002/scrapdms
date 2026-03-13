@@ -24,7 +24,6 @@ public class ApiDto {
     public static class GrcResponse {
         private String gstin;
         private Integer grcScore;
-        private String scoreVersion;
         private LocalDateTime calculatedAt;
     }
 
@@ -46,8 +45,9 @@ public class ApiDto {
         private Integer delayCountGstr3b;
 
         private Integer grcScore;
-        private String scoreVersion;
         private LocalDateTime scoreCalculatedAt;
+        private java.util.Map<String, java.math.BigDecimal> scoreBreakdown;
+        private String updatedBy;
     }
 
     @Data
@@ -63,6 +63,7 @@ public class ApiDto {
         private String aggregateTurnover;
         private Integer delayCountGstr1;
         private Integer delayCountGstr3b;
+        private String updatedBy;
     }
 
     @Data

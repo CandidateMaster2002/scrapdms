@@ -2,42 +2,34 @@ package com.company.grc.rule.impl;
 
 import com.company.grc.entity.GstDetailsEntity;
 import com.company.grc.rule.GrcRule;
+import com.company.grc.service.GrcRuleConfigService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
 import java.math.BigDecimal;
+import java.util.Map;
 
 @Component
 public class GstTypeRule implements GrcRule {
 
-    @Override
-    public BigDecimal apply(GstDetailsEntity details) {
-        if (details.getGstType() == null || details.getGstType().isBlank()) {
-            return BigDecimal.ZERO;
-        }
+    private final GrcRuleConfigService configService;
 
-        String type = details.getGstType().toLowerCase();
-
-        if (type.contains("proprietor")) {
-            return BigDecimal.valueOf(13);
-        }
-
-        // Proprietorship → 13
-        if (type.contains("partnership")) {
-            return BigDecimal.valueOf(10);
-        }
-
-        // Public Limited / Government / PSU → 2
-        if (type.contains("public")
-                || type.contains("government")
-                || type.contains("psu") || type.contains("private")) {
-            return BigDecimal.valueOf(2);
-        }
-
-        // Default → 0 (neutral / unknown)
-        return BigDecimal.ZERO;
+    @Autowired
+    public GstTypeRule(GrcRuleConfigService configService) {
+        this.configService = configService;
     }
 
     @Override
-    public String getRuleName() {
-        return "GST Type Scoring";
+    public String getRuleName() { return "GST Type"; }
+
+    @Override
+    public BigDecimal apply(GstDetailsEntity entity) {
+        Map<String, Double> cfg = configService.getConfigMap();
+        double maxScore = cfg.getOrDefault("TYPE_MAX", 10.0);
+        String type = entity.getGstType() == null ? "" : entity.getGstType().toLowerCase();
+        double multiplier = type.contains("proprietor")
+                ? cfg.getOrDefault("TYPE_PROPR_MULT", 1.0)
+                : cfg.getOrDefault("TYPE_COMPANY_MULT", 0.0);
+        return BigDecimal.valueOf(maxScore * multiplier);
     }
 }

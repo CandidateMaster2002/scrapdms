@@ -27,9 +27,9 @@ public class GrcScoreEntity {
     @Column(name = "score")
     private Integer score;
 
-    @Column(name = "score_version")
-    private String scoreVersion;
-
     @Column(name = "calculated_at")
     private LocalDateTime calculatedAt;
+
+    @Column(name = "updated_by")
+    private String updatedBy;
 }

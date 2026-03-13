@@ -2,74 +2,98 @@ package com.company.grc.rule;
 
 import com.company.grc.entity.GstDetailsEntity;
 import com.company.grc.rule.impl.*;
+import com.company.grc.service.GrcRuleConfigService;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+/**
+ * Tests for the 6-rule GRC scoring system (max = 100).
+ * Uses a mocked GrcRuleConfigService returning default values.
+ */
 public class GrcScoreTest {
 
+    /** Build a config service mock that returns the standard defaults. */
+    private GrcRuleConfigService mockConfig() {
+        Map<String, Double> defaults = new HashMap<>();
+        GrcRuleConfigService.DEFAULTS.forEach((k, v) -> defaults.put(k, (Double) v[0]));
+        GrcRuleConfigService svc = Mockito.mock(GrcRuleConfigService.class);
+        Mockito.when(svc.getConfigMap()).thenReturn(defaults);
+        return svc;
+    }
+
+    private List<GrcRule> buildRules(GrcRuleConfigService svc) {
+        return Arrays.asList(
+                new GstTypeRule(svc),
+                new GstTenureRule(svc),
+                new TurnoverRule(svc),
+                new GstStatusRule(svc),
+                new FilingDelayRule(svc));
+    }
+
     @Test
-    public void testStrictScoreCalculation() {
-        // Setup Rules
-        List<GrcRule> rules = Arrays.asList(
-                new GstTypeRule(),
-                new GstTenureRule(),
-                new TurnoverRule(),
-                new GstStatusRule(),
-                new FilingDelayRule());
-
-        GrcRuleEngine engine = new GrcRuleEngine(rules);
-
-        // Scenario 1: A risky entity
-        // Type: Proprietor (+13)
-        // Age: < 1 year (+9.75)
-        // Turnover: < 5 Cr (+6.5)
-        // Status: Cancelled/Other (+13)
-        // Delay GSTR1: > 0 (+13)
-        // Delay GSTR3B: > 0 (+9.75)
-        // Base Score = 13 + 9.75 + 6.5 + 13 + 13 + 9.75 = 65.0
-        // Final Score = 65.0 * 1.53 = 99.45
+    public void testMaxRiskScore() {
+        // Proprietorship (10) + <1yr (10) + <50Cr (5) + Cancelled (35) +
+        // GSTR1 delay>1 (20) + GSTR3B delay>1 (20) = 100
+        GrcRuleConfigService svc = mockConfig();
+        GrcRuleEngine engine = new GrcRuleEngine(buildRules(svc));
 
         GstDetailsEntity risky = GstDetailsEntity.builder()
                 .gstType("Proprietorship")
                 .registrationDate(LocalDate.now().minusMonths(6))
-                .aggregateTurnover("Slab: Rs. 0 Cr. to 5 Cr.") // Should parse < 5
+                .aggregateTurnover("5")
                 .gstStatus("Cancelled")
-                .delayCountGstr1(1)
-                .delayCountGstr3b(1)
+                .delayCountGstr1(5)
+                .delayCountGstr3b(5)
                 .build();
 
         BigDecimal score = engine.calculateScore(risky);
-        assertEquals(0, new BigDecimal("99.45").compareTo(score), "Risky Score mismatch: " + score);
+        assertEquals(0, new BigDecimal("100").compareTo(score), "Max risk mismatch: " + score);
+    }
 
-        // Scenario 2: A safe entity
-        // Type: Public Limited (Not in risky list -> 0? Wait, rule: "Society... -> 2",
-        // "Private -> 4", "Proprietor -> 13". Else 0?)
-        // Let's check GstTypeRule logic.
-        // It returns 0 if no match. "Public Limited" contains "public" which is not
-        // matched. So 0.
-        // Age: > 5 years (+1)
-        // Turnover: > 100 Cr (+1)
-        // Status: Active (+0)
-        // Delay GSTR1: 0 (+0)
-        // Delay GSTR3B: 0 (+0)
-        // Base Score = 0 + 1 + 1 + 0 + 0 + 0 = 2.0
-        // Final Score = 2.0 * 1.53 = 3.06
+    @Test
+    public void testMinRiskScore() {
+        // Private company (0) + >5yr (0) + >100Cr (0) + Active (0) + delays<=1 (0) = 0
+        GrcRuleConfigService svc = mockConfig();
+        GrcRuleEngine engine = new GrcRuleEngine(buildRules(svc));
 
         GstDetailsEntity safe = GstDetailsEntity.builder()
-                .gstType("Public Limited Company")
+                .gstType("Private Limited Company")
                 .registrationDate(LocalDate.now().minusYears(10))
-                .aggregateTurnover("Slab: Rs. 500 Cr. and above")
+                .aggregateTurnover("500")
                 .gstStatus("Active")
                 .delayCountGstr1(0)
                 .delayCountGstr3b(0)
                 .build();
 
-        BigDecimal safeScore = engine.calculateScore(safe);
-        assertEquals(0, new BigDecimal("3.06").compareTo(safeScore), "Safe Score mismatch: " + safeScore);
+        BigDecimal score = engine.calculateScore(safe);
+        assertEquals(0, new BigDecimal("0").compareTo(score), "Min risk mismatch: " + score);
+    }
+
+    @Test
+    public void testPartialRiskScore() {
+        // Proprietorship (10) + >5yr (0) + >100Cr (0) + Active (0) + GSTR1 delay>1 (20) + GSTR3B ok (0) = 30
+        GrcRuleConfigService svc = mockConfig();
+        GrcRuleEngine engine = new GrcRuleEngine(buildRules(svc));
+
+        GstDetailsEntity partial = GstDetailsEntity.builder()
+                .gstType("Proprietorship")
+                .registrationDate(LocalDate.now().minusYears(10))
+                .aggregateTurnover("500")
+                .gstStatus("Active")
+                .delayCountGstr1(5)
+                .delayCountGstr3b(1)
+                .build();
+
+        BigDecimal score = engine.calculateScore(partial);
+        assertEquals(0, new BigDecimal("30").compareTo(score), "Partial risk mismatch: " + score);
     }
 }

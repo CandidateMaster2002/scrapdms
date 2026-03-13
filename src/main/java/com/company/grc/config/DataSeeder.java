@@ -14,15 +14,15 @@ public class DataSeeder {
         return args -> {
             if (userRepository.count() == 0) {
                 UserEntity admin = UserEntity.builder()
-                        .name("Super Admin")
-                        .email("admin@scrapdms.com")
-                        .mobileNo("9999999999")
-                        .password("admin123")
+                        .name("ScrapDMS")
+                        .email("contcat@scrapdms.com")
+                        .mobileNo("9560758420")
+                        .password("password")
                         .role("SUPER_ADMIN")
                         .build();
 
                 userRepository.save(admin);
-                System.out.println("Default Super Admin created: admin@scrapdms.com / admin123");
+                System.out.println("Default Super Admin created: contcat@scrapdms.com / password");
             }
         };
     }
