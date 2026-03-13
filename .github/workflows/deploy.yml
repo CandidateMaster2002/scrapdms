@@ -21,8 +21,12 @@ jobs:
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /opt/app/scrapdms
-            sudo git pull origin main
+            sudo git fetch origin main
+            sudo git reset --hard origin/main
             sudo mvn clean package -DskipTests
+            if [ $? -ne 0 ]; then echo "MAVEN BUILD FAILED"; exit 1; fi
+            sudo systemctl stop app.service
             sudo cp target/grc-service-0.0.1-SNAPSHOT.jar /opt/app/app.jar
-            sudo systemctl restart app.service
+            sudo systemctl start app.service
+            sleep 5
             sudo systemctl status app.service --no-pager
