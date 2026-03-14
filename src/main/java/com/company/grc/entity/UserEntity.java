@@ -35,7 +35,7 @@ public class UserEntity {
     @Column(nullable = false, length = 20)
     private String role; // "USER" or "SUPER_ADMIN"
 
-    @Column(name = "is_active", nullable = false)
+    @Column(name = "active", nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
     private boolean active = true;
 
