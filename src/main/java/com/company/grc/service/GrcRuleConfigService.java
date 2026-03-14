@@ -32,8 +32,12 @@ public class GrcRuleConfigService {
     static {
         // [configValue, description]
         DEFAULTS.put("TYPE_MAX",          new Object[]{10.0, "Type Rule — Max score"});
+        DEFAULTS.put("TYPE_PUBLIC_MULT",  new Object[]{0.0,  "Type Rule — Public Limited multiplier"});
+        DEFAULTS.put("TYPE_PRIVATE_MULT", new Object[]{0.25, "Type Rule — Private Limited multiplier"});
+        DEFAULTS.put("TYPE_PARTNER_MULT", new Object[]{0.5,  "Type Rule — Partnership multiplier"});
         DEFAULTS.put("TYPE_PROPR_MULT",   new Object[]{1.0,  "Type Rule — Proprietorship multiplier"});
-        DEFAULTS.put("TYPE_COMPANY_MULT", new Object[]{0.0,  "Type Rule — Private/Public company multiplier"});
+        DEFAULTS.put("TYPE_OTHER_MULT",   new Object[]{1.0,  "Type Rule — Other type multiplier"});
+        DEFAULTS.put("TYPE_COMPANY_MULT", new Object[]{0.0,  "Type Rule — General company multiplier (legacy)"});
 
         DEFAULTS.put("REG_MAX",           new Object[]{10.0, "Registration Date — Max score"});
         DEFAULTS.put("REG_LT1_MULT",      new Object[]{1.0,  "Registration Date — < 1 year multiplier"});
@@ -59,6 +63,9 @@ public class GrcRuleConfigService {
         DEFAULTS.put("G3B_THRESHOLD",     new Object[]{1.0,  "GSTR-3B Filing — Delay threshold (count)"});
         DEFAULTS.put("G3B_OK_MULT",       new Object[]{0.0,  "GSTR-3B Filing — On-time multiplier"});
         DEFAULTS.put("G3B_DELAY_MULT",    new Object[]{1.0,  "GSTR-3B Filing — Delayed multiplier"});
+
+        DEFAULTS.put("COLOR_RED_THRESHOLD",    new Object[]{30.0, "Color Coding — Red Score Threshold"});
+        DEFAULTS.put("COLOR_YELLOW_THRESHOLD", new Object[]{20.0, "Color Coding — Yellow Score Threshold"});
     }
 
     private Map<String, Double> cachedConfigMap = null;
@@ -67,22 +74,32 @@ public class GrcRuleConfigService {
     @PostConstruct
     @Transactional
     public void seedDefaults() {
-        if (repo.count() == 0) {
-            DEFAULTS.forEach((key, meta) ->
+        DEFAULTS.forEach((key, meta) -> {
+            if (!repo.existsById(key)) {
                 repo.save(GrcRuleConfigEntity.builder()
                         .configKey(key)
                         .configValue((Double) meta[0])
                         .description((String) meta[1])
-                        .build())
-            );
-        }
+                        .build());
+            }
+        });
         refreshCache();
     }
 
     /** Returns all config entries from DB as a List. */
     @Transactional(readOnly = true)
     public List<GrcRuleConfigEntity> getAllConfig() {
-        return repo.findAll();
+        Map<String, Double> map = getConfigMap();
+        return map.entrySet().stream().map(entry -> {
+            String key = entry.getKey();
+            Double val = entry.getValue();
+            String desc = (String) DEFAULTS.getOrDefault(key, new Object[]{0.0, key})[1];
+            return GrcRuleConfigEntity.builder()
+                    .configKey(key)
+                    .configValue(val)
+                    .description(desc)
+                    .build();
+        }).toList();
     }
 
     /** Returns all config values as a key→value map (cached). */

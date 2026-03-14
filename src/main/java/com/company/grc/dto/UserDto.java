@@ -37,6 +37,18 @@ public class UserDto {
     }
 
     @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class UpdateUserRequest {
+        private String name;
+        private String email;
+        private String mobileNo;
+        private String password;
+        private String role;
+        private Boolean active;
+    }
+
+    @Data
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
@@ -47,6 +59,7 @@ public class UserDto {
         private String mobileNo;
         private String role;
         private String password; // Added per user request to show passwords
+        private boolean active;
         private LocalDateTime createdAt;
     }
 }

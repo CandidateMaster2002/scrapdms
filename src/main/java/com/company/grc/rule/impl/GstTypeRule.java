@@ -27,9 +27,23 @@ public class GstTypeRule implements GrcRule {
         Map<String, Double> cfg = configService.getConfigMap();
         double maxScore = cfg.getOrDefault("TYPE_MAX", 10.0);
         String type = entity.getGstType() == null ? "" : entity.getGstType().toLowerCase();
-        double multiplier = type.contains("proprietor")
-                ? cfg.getOrDefault("TYPE_PROPR_MULT", 1.0)
-                : cfg.getOrDefault("TYPE_COMPANY_MULT", 0.0);
+
+        double multiplier;
+        if (type.contains("public")) {
+            multiplier = cfg.getOrDefault("TYPE_PUBLIC_MULT", 0.0);
+        } else if (type.contains("private")) {
+            multiplier = cfg.getOrDefault("TYPE_PRIVATE_MULT", 0.25);
+        } else if (type.contains("partner")) {
+            multiplier = cfg.getOrDefault("TYPE_PARTNER_MULT", 0.5);
+        } else if (type.contains("proprietor")) {
+            multiplier = cfg.getOrDefault("TYPE_PROPR_MULT", 1.0);
+        } else if (type.contains("other")) {
+            multiplier = cfg.getOrDefault("TYPE_OTHER_MULT", 1.0);
+        } else {
+            // Default to Proprietorship/High risk if unknown
+            multiplier = cfg.getOrDefault("TYPE_PROPR_MULT", 1.0);
+        }
+
         return BigDecimal.valueOf(maxScore * multiplier);
     }
 }

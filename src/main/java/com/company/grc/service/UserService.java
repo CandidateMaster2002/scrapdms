@@ -32,6 +32,10 @@ public class UserService {
             throw new RuntimeException("Invalid password");
         }
 
+        if (!user.isActive()) {
+            throw new RuntimeException("Account is inactive. Please contact administrator.");
+        }
+
         return mapToResponse(user);
     }
 
@@ -81,6 +85,51 @@ public class UserService {
         userRepository.save(user);
     }
 
+    @Transactional
+    public UserDto.UserResponse updateUser(Long id, UserDto.UpdateUserRequest request, String creatorRole) {
+        if (!"SUPER_ADMIN".equals(creatorRole)) {
+            throw new RuntimeException("Only SUPER_ADMIN can update users");
+        }
+
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (request.getName() != null) user.setName(request.getName());
+        if (request.getEmail() != null) user.setEmail(request.getEmail());
+        if (request.getMobileNo() != null) user.setMobileNo(request.getMobileNo());
+        if (request.getPassword() != null) user.setPassword(request.getPassword());
+        if (request.getRole() != null) user.setRole(request.getRole().toUpperCase());
+        
+        // Super Admin must always be active.
+        if ("SUPER_ADMIN".equals(user.getRole())) {
+            user.setActive(true);
+        } else if (request.getActive() != null) {
+            user.setActive(request.getActive());
+        }
+
+        user = userRepository.save(user);
+        return mapToResponse(user);
+    }
+
+    @Transactional
+    public void deleteUser(Long id, String creatorRole) {
+        if (!"SUPER_ADMIN".equals(creatorRole)) {
+            throw new RuntimeException("Only SUPER_ADMIN can delete users");
+        }
+
+        if (!userRepository.existsById(id)) {
+            throw new RuntimeException("User not found");
+        }
+
+        userRepository.deleteById(id);
+    }
+
+    public UserDto.UserResponse getById(Long id) {
+        UserEntity user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        return mapToResponse(user);
+    }
+
     public List<UserDto.UserResponse> getAllUsers() {
         return userRepository.findAll().stream()
                 .map(this::mapToResponse)
@@ -103,6 +152,7 @@ public class UserService {
                 .mobileNo(entity.getMobileNo())
                 .role(entity.getRole())
                 .password(entity.getPassword())
+                .active(entity.isActive())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
