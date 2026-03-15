@@ -18,7 +18,7 @@ public class DataSeeder {
                         .email("admin@scrapdms.com")
                         .mobileNo("9999999999")
                         .password("ScrapDMS")
-                        .role("SUPER_ADMIN")
+                        .role("super_admin")
                         .build();
 
                 userRepository.save(admin);

@@ -41,8 +41,8 @@ public class UserService {
 
     @Transactional
     public UserDto.UserResponse createUser(UserDto.CreateUserRequest request, String creatorRole) {
-        if (!"SUPER_ADMIN".equals(creatorRole)) {
-            throw new RuntimeException("Only SUPER_ADMIN can create new users");
+        if (!"super_admin".equals(creatorRole)) {
+            throw new RuntimeException("Only super_admin can create new users");
         }
 
         if ((request.getEmail() == null || request.getEmail().isBlank()) && 
@@ -58,7 +58,7 @@ public class UserService {
             throw new RuntimeException("Mobile number already exists");
         }
 
-        String assignedRole = (request.getRole() != null && !request.getRole().isBlank()) ? request.getRole().toUpperCase() : "USER";
+        String assignedRole = (request.getRole() != null && !request.getRole().isBlank()) ? request.getRole().toLowerCase() : "user";
 
         UserEntity user = UserEntity.builder()
                 .name(request.getName())
@@ -87,8 +87,8 @@ public class UserService {
 
     @Transactional
     public UserDto.UserResponse updateUser(Long id, UserDto.UpdateUserRequest request, String creatorRole) {
-        if (!"SUPER_ADMIN".equals(creatorRole)) {
-            throw new RuntimeException("Only SUPER_ADMIN can update users");
+        if (!"super_admin".equals(creatorRole)) {
+            throw new RuntimeException("Only super_admin can update users");
         }
 
         UserEntity user = userRepository.findById(id)
@@ -98,10 +98,10 @@ public class UserService {
         if (request.getEmail() != null) user.setEmail(request.getEmail());
         if (request.getMobileNo() != null) user.setMobileNo(request.getMobileNo());
         if (request.getPassword() != null) user.setPassword(request.getPassword());
-        if (request.getRole() != null) user.setRole(request.getRole().toUpperCase());
+        if (request.getRole() != null) user.setRole(request.getRole().toLowerCase());
         
         // Super Admin must always be active.
-        if ("SUPER_ADMIN".equals(user.getRole())) {
+        if ("super_admin".equals(user.getRole())) {
             user.setActive(true);
         } else if (request.getActive() != null) {
             user.setActive(request.getActive());
@@ -113,8 +113,8 @@ public class UserService {
 
     @Transactional
     public void deleteUser(Long id, String creatorRole) {
-        if (!"SUPER_ADMIN".equals(creatorRole)) {
-            throw new RuntimeException("Only SUPER_ADMIN can delete users");
+        if (!"super_admin".equals(creatorRole)) {
+            throw new RuntimeException("Only super_admin can delete users");
         }
 
         if (!userRepository.existsById(id)) {

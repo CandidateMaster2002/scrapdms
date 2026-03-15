@@ -25,7 +25,7 @@ public class UserDto {
         private String email;
         private String mobileNo;
         private String password;
-        private String role; // Optional, defaults to USER if not provided by SUPER_ADMIN
+        private String role; // Optional, defaults to user if not provided by super_admin
     }
 
     @Data

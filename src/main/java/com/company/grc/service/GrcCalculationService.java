@@ -224,7 +224,7 @@ public class GrcCalculationService {
                 .gstin(gstin)
                 .score(newScore)
                 .calculatedAt(LocalDateTime.now())
-                .updatedBy("SUPER_ADMIN_MANUAL")
+                .updatedBy("super_admin_manual")
                 .build();
         grcScoreRepository.save(scoreEntity);
 

@@ -33,7 +33,7 @@ public class UserEntity {
     private String password;
 
     @Column(nullable = false, length = 20)
-    private String role; // "USER" or "SUPER_ADMIN"
+    private String role; // "user" or "super_admin"
 
     @Column(name = "active", nullable = false, columnDefinition = "boolean default true")
     @Builder.Default
