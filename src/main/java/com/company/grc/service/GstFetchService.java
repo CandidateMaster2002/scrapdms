@@ -15,6 +15,15 @@ import java.util.Optional;
  * External API (Kashidigital) has been REMOVED.
  * New GSTINs are added with empty/default values and the user fills in details manually.
  */
+    // GSTIN validation pattern (15‑character Indian GST number)
+    private static final java.util.regex.Pattern GSTIN_PATTERN =
+            java.util.regex.Pattern.compile("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$", java.util.regex.Pattern.CASE_INSENSITIVE);
+
+    private void validateGstin(String gstin) {
+        if (gstin == null || gstin.isBlank() || gstin.equals("0") || !GSTIN_PATTERN.matcher(gstin).matches()) {
+            throw new IllegalArgumentException("Invalid GSTIN supplied: " + gstin);
+        }
+    }
 @Service
 public class GstFetchService {
 
@@ -31,6 +40,8 @@ public class GstFetchService {
      */
     @Transactional
     public GstDetailsEntity getGstDetails(String gstin) {
+        // Validate GSTIN format before any DB operation
+        validateGstin(gstin);
         Optional<GstDetailsEntity> existing = gstDetailsRepository.findById(gstin);
         return existing.orElseGet(() -> createStubEntry(gstin));
     }

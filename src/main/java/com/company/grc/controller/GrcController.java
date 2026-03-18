@@ -71,6 +71,10 @@ public class GrcController {
         }
 
         for (String gstin : request.getGstins()) {
+            // Validate GSTIN format before any processing
+            if (gstin == null || gstin.isBlank() || gstin.equals("0") || !gstin.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$")) {
+                return ResponseEntity.badRequest().body("Invalid GSTIN supplied: " + gstin);
+            }
             // Creates a stub entry with default score if GSTIN is new,
             // or recalculates score from existing DB values if GSTIN already exists.
             grcCalculationService.calculateScore(gstin);
