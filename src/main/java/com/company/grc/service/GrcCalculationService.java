@@ -122,7 +122,8 @@ public class GrcCalculationService {
                 .lastApiSync(details.getLastApiSync())
                 .aggregateTurnover(details.getAggregateTurnover())
                 .delayCountGstr1(details.getDelayCountGstr1())
-                .delayCountGstr3b(details.getDelayCountGstr3b());
+                .delayCountGstr3b(details.getDelayCountGstr3b())
+                .source(details.getSource());
 
         grcScoreRepository.findById(gstin).ifPresent(score -> {
             builder.grcScore(score.getScore())
@@ -175,7 +176,8 @@ public class GrcCalculationService {
                     builder.registrationDate(details.getRegistrationDate())
                            .aggregateTurnover(details.getAggregateTurnover())
                            .gstType(details.getGstType())
-                           .address(details.getAddress());
+                           .address(details.getAddress())
+                           .source(details.getSource());
                     return builder.build();
                 })
                 .collect(Collectors.toList());
@@ -204,6 +206,11 @@ public class GrcCalculationService {
             details.setDelayCountGstr1(request.getDelayCountGstr1());
         if (request.getDelayCountGstr3b() != null)
             details.setDelayCountGstr3b(request.getDelayCountGstr3b());
+
+        // Mark source as 'From UI' if modified manually
+        if (details.getSource() == null || !details.getSource().equals("From UI")) {
+            details.setSource("From UI");
+        }
 
         // Mark as user-updated
         details.setLastApiSync(LocalDateTime.now());

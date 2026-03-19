@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS gst_details (
     aggregate_turnover VARCHAR(255),
     delay_count_gstr1 INTEGER,
     delay_count_gstr3b INTEGER,
+    source VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -36,3 +37,5 @@ ALTER TABLE gst_details ALTER COLUMN trade_name TYPE VARCHAR(500);
 ALTER TABLE gst_details ALTER COLUMN legal_name TYPE VARCHAR(500);
 ALTER TABLE gst_details ALTER COLUMN gst_status TYPE VARCHAR(100);
 ALTER TABLE gst_details ALTER COLUMN aggregate_turnover TYPE VARCHAR(255);
+-- Add source column if it doesn't exist (assuming DB allows it, or recreate if using embedded)
+ALTER TABLE gst_details ADD COLUMN IF NOT EXISTS source VARCHAR(50);

@@ -55,6 +55,9 @@ public class GstDetailsEntity {
     @Column(name = "delay_count_gstr3b")
     private Integer delayCountGstr3b;
 
+    @Column(name = "source", length = 50)
+    private String source;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 

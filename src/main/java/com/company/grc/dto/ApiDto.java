@@ -48,6 +48,7 @@ public class ApiDto {
         private LocalDateTime scoreCalculatedAt;
         private java.util.Map<String, java.math.BigDecimal> scoreBreakdown;
         private String updatedBy;
+        private String source;
     }
 
     @Data
