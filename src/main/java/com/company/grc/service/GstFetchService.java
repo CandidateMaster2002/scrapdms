@@ -30,10 +30,12 @@ public class GstFetchService {
     }
 
     private final GstDetailsRepository gstDetailsRepository;
+    private final EmailService emailService;
 
     @Autowired
-    public GstFetchService(GstDetailsRepository gstDetailsRepository) {
+    public GstFetchService(GstDetailsRepository gstDetailsRepository, EmailService emailService) {
         this.gstDetailsRepository = gstDetailsRepository;
+        this.emailService = emailService;
     }
 
     /**
@@ -76,6 +78,11 @@ public class GstFetchService {
                 .createdAt(LocalDateTime.now())
                 .build();
 
-        return gstDetailsRepository.save(stub);
+        GstDetailsEntity saved = gstDetailsRepository.save(stub);
+        
+        // Trigger email notification asynchronously
+        emailService.sendNewGstNotification(gstin);
+        
+        return saved;
     }
 }
