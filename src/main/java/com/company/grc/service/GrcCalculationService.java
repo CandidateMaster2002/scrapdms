@@ -150,34 +150,32 @@ public class GrcCalculationService {
 
     @Transactional(readOnly = true)
     public List<ApiDto.GstAppDetailsResponse> getAllDetailsWithScores() {
-        List<GstDetailsEntity> allDetails = gstDetailsRepository.findAll();
-        // Batch fetch all scores into memory to avoid N+1 findById queries
-        Map<String, GrcScoreEntity> scoreMap = grcScoreRepository.findAll().stream()
-                .collect(Collectors.toMap(GrcScoreEntity::getGstin, s -> s));
+        List<Object[]> results = gstDetailsRepository.findAllWithScores();
 
-        return allDetails.stream()
-                .map(details -> {
+        return results.stream()
+                .map(row -> {
+                    GstDetailsEntity details = (GstDetailsEntity) row[0];
+                    GrcScoreEntity score = (GrcScoreEntity) row[1];
+
                     ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder = ApiDto.GstAppDetailsResponse.builder()
                             .gstin(details.getGstin())
                             .tradeName(details.getTradeName())
                             .legalName(details.getLegalName())
                             .gstStatus(details.getGstStatus())
                             .delayCountGstr1(details.getDelayCountGstr1())
-                            .delayCountGstr3b(details.getDelayCountGstr3b());
+                            .delayCountGstr3b(details.getDelayCountGstr3b())
+                            .registrationDate(details.getRegistrationDate())
+                            .aggregateTurnover(details.getAggregateTurnover())
+                            .gstType(details.getGstType())
+                            .address(details.getAddress())
+                            .source(details.getSource());
 
-                    GrcScoreEntity score = scoreMap.get(details.getGstin());
                     if (score != null) {
                         builder.grcScore(score.getScore())
                                 .scoreCalculatedAt(score.getCalculatedAt())
                                 .updatedBy(score.getUpdatedBy());
                     }
-                    
-                    // Fields needed for Quick Edit view toggle
-                    builder.registrationDate(details.getRegistrationDate())
-                           .aggregateTurnover(details.getAggregateTurnover())
-                           .gstType(details.getGstType())
-                           .address(details.getAddress())
-                           .source(details.getSource());
+
                     return builder.build();
                 })
                 .collect(Collectors.toList());
