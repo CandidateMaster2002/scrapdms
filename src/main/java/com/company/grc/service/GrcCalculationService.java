@@ -53,23 +53,26 @@ public class GrcCalculationService {
      */
     @Transactional
     public ApiDto.GrcResponse calculateScore(String gstin) {
-        Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(gstin);
+        String trimmedGstin = (gstin != null) ? gstin.trim() : null;
+        gstFetchService.validateGstin(trimmedGstin);
+
+        Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(trimmedGstin);
 
         if (existingScoreOpt.isPresent()) {
             GrcScoreEntity existingScore = existingScoreOpt.get();
             return ApiDto.GrcResponse.builder()
-                    .gstin(gstin)
+                    .gstin(trimmedGstin)
                     .grcScore(existingScore.getScore())
                     .calculatedAt(existingScore.getCalculatedAt())
                     .build();
         }
 
         // New GSTIN — create stub GST details with empty values
-        gstFetchService.createStubEntry(gstin);
+        gstFetchService.createStubEntry(trimmedGstin);
 
         // Insert dummy score
         GrcScoreEntity dummyScore = GrcScoreEntity.builder()
-                .gstin(gstin)
+                .gstin(trimmedGstin)
                 .score(config.DUMMY_DEFAULT_SCORE)
                 .calculatedAt(LocalDateTime.now())
                 .updatedBy("Dummy")
@@ -77,7 +80,7 @@ public class GrcCalculationService {
         grcScoreRepository.save(dummyScore);
 
         return ApiDto.GrcResponse.builder()
-                .gstin(gstin)
+                .gstin(trimmedGstin)
                 .grcScore(config.DUMMY_DEFAULT_SCORE)
                 .calculatedAt(dummyScore.getCalculatedAt())
                 .build();
@@ -278,5 +281,27 @@ public class GrcCalculationService {
         for (String gstin : allGstins) {
             recalculateStoredScore(gstin);
         }
+    }
+
+    /**
+     * Finds and deletes GST records that do not match valid GSTIN format.
+     * Useful for purging "garbage" entries like "0", "N/A", or whitespace.
+     */
+    @Transactional
+    public int cleanupInvalidRecords() {
+        List<String> allGstins = gstDetailsRepository.findAllGstins();
+        int count = 0;
+        for (String gstin : allGstins) {
+            try {
+                // We use trim() here because existing garbage might have spaces
+                String trimmed = gstin != null ? gstin.trim() : null;
+                gstFetchService.validateGstin(trimmed);
+            } catch (IllegalArgumentException e) {
+                // Invalid — delete it
+                deleteGstDetails(gstin);
+                count++;
+            }
+        }
+        return count;
     }
 }

@@ -21,7 +21,9 @@ public class EmailService {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setFrom("scrapbiddate@gmail.com");
-            message.setTo("dkggroup@gmail.com");
+            message.setTo(
+                    "dkggroup@gmail.com",
+                    "contact@scrapdms.com");
             message.setSubject("New Vendor Registration Added: " + gstin);
             message.setText("A new Vendor Registration entry has been added for GSTIN: " + gstin +
                     "\n\nYou can view and update the details in the GRC dashboard.");
