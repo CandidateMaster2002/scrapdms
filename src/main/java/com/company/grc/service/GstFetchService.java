@@ -13,21 +13,15 @@ import java.util.Optional;
  * Handles fetching/creating GstDetailsEntity records.
  *
  * External API (Kashidigital) has been REMOVED.
- * New GSTINs are added with empty/default values and the user fills in details manually.
+ * New GSTINs are added with empty/default values and the user fills in details
+ * manually.
  */
-
 @Service
 public class GstFetchService {
 
-    // GSTIN validation pattern (15‑character Indian GST number)
-    private static final java.util.regex.Pattern GSTIN_PATTERN =
-            java.util.regex.Pattern.compile("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$", java.util.regex.Pattern.CASE_INSENSITIVE);
-
-    public void validateGstin(String gstin) {
-        if (gstin == null || gstin.isBlank() || gstin.equals("0") || !GSTIN_PATTERN.matcher(gstin).matches()) {
-            throw new IllegalArgumentException("Invalid GSTIN supplied: [" + (gstin == null ? "null" : gstin) + "]");
-        }
-    }
+    // GSTIN validation pattern (15-character Indian GST number)
+    private static final java.util.regex.Pattern GSTIN_PATTERN = java.util.regex.Pattern
+            .compile("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$", java.util.regex.Pattern.CASE_INSENSITIVE);
 
     private final GstDetailsRepository gstDetailsRepository;
     private final EmailService emailService;
@@ -38,6 +32,12 @@ public class GstFetchService {
         this.emailService = emailService;
     }
 
+    public void validateGstin(String gstin) {
+        if (gstin == null || gstin.isBlank() || gstin.equals("0") || !GSTIN_PATTERN.matcher(gstin).matches()) {
+            throw new IllegalArgumentException("Invalid GSTIN supplied: [" + (gstin == null ? "null" : gstin) + "]");
+        }
+    }
+
     /**
      * Returns existing GST details from DB.
      * If not found, creates a stub record with all empty values.
@@ -45,7 +45,6 @@ public class GstFetchService {
     @Transactional
     public GstDetailsEntity getGstDetails(String gstin) {
         String trimmedGstin = (gstin != null) ? gstin.trim() : null;
-        // Validate GSTIN format before any DB operation
         validateGstin(trimmedGstin);
         Optional<GstDetailsEntity> existing = gstDetailsRepository.findById(trimmedGstin);
         return existing.orElseGet(() -> createStubEntry(trimmedGstin));
@@ -83,10 +82,10 @@ public class GstFetchService {
                 .build();
 
         GstDetailsEntity saved = gstDetailsRepository.save(stub);
-        
+
         // Trigger email notification asynchronously
         emailService.sendNewGstNotification(trimmedGstin);
-        
+
         return saved;
     }
 }

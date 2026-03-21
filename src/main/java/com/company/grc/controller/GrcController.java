@@ -21,9 +21,9 @@ public class GrcController {
     private final GstFetchService gstFetchService;
 
     @Autowired
-    public GrcController(GrcCalculationService grcCalculationService, 
-                        GrcRuleConfigService ruleConfigService,
-                        GstFetchService gstFetchService) {
+    public GrcController(GrcCalculationService grcCalculationService,
+            GrcRuleConfigService ruleConfigService,
+            GstFetchService gstFetchService) {
         this.grcCalculationService = grcCalculationService;
         this.ruleConfigService = ruleConfigService;
         this.gstFetchService = gstFetchService;
@@ -33,7 +33,7 @@ public class GrcController {
     public ResponseEntity<ApiDto.GrcResponse> calculateScore(@RequestBody ApiDto.GrcRequest request) {
         // Validation moved to service, but we trim here for consistency
         String gstin = request.getGstin() != null ? request.getGstin().trim() : null;
-        gstFetchService.validateGstin(gstin); 
+        gstFetchService.validateGstin(gstin);
         ApiDto.GrcResponse response = grcCalculationService.calculateScore(gstin);
         return ResponseEntity.ok(response);
     }
@@ -79,7 +79,8 @@ public class GrcController {
         }
 
         for (String gstin : request.getGstins()) {
-            if (gstin != null) gstin = gstin.trim();
+            if (gstin != null)
+                gstin = gstin.trim();
             // Validate GSTIN using central service logic
             try {
                 gstFetchService.validateGstin(gstin);
@@ -120,7 +121,10 @@ public class GrcController {
         return ResponseEntity.ok(ruleConfigService.getAllConfig());
     }
 
-    /** Updates rule config values. Body: { "TYPE_MAX": 10.0, "TYPE_PROPR_MULT": 1.0, ... } */
+    /**
+     * Updates rule config values. Body: { "TYPE_MAX": 10.0, "TYPE_PROPR_MULT": 1.0,
+     * ... }
+     */
     @PutMapping("/rule-config")
     public ResponseEntity<List<GrcRuleConfigEntity>> updateRuleConfig(@RequestBody Map<String, Double> updates) {
         return ResponseEntity.ok(ruleConfigService.saveConfig(updates));
