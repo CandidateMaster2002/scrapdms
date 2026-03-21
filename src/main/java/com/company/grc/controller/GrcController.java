@@ -72,7 +72,8 @@ public class GrcController {
 
         for (String gstin : request.getGstins()) {
             // Validate GSTIN format before any processing
-            if (gstin == null || gstin.isBlank() || gstin.equals("0") || !gstin.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$")) {
+            if (gstin == null || gstin.isBlank() || gstin.equals("0")
+                    || !gstin.matches("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$")) {
                 return ResponseEntity.badRequest().body("Invalid GSTIN supplied: " + gstin);
             }
             // Creates a stub entry with default score if GSTIN is new,
@@ -98,7 +99,10 @@ public class GrcController {
         return ResponseEntity.ok(ruleConfigService.getAllConfig());
     }
 
-    /** Updates rule config values. Body: { "TYPE_MAX": 10.0, "TYPE_PROPR_MULT": 1.0, ... } */
+    /**
+     * Updates rule config values. Body: { "TYPE_MAX": 10.0, "TYPE_PROPR_MULT": 1.0,
+     * ... }
+     */
     @PutMapping("/rule-config")
     public ResponseEntity<List<GrcRuleConfigEntity>> updateRuleConfig(@RequestBody Map<String, Double> updates) {
         return ResponseEntity.ok(ruleConfigService.saveConfig(updates));
