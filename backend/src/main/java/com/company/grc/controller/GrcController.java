@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
+import org.springframework.http.HttpStatus;
 
 @RestController
 @RequestMapping("/api/grc")
@@ -52,7 +53,18 @@ public class GrcController {
 
     @GetMapping("/details/{gstin}")
     public ResponseEntity<ApiDto.GstAppDetailsResponse> getGstDetailsWithScore(@PathVariable String gstin) {
+        // Mobile and email are stripped — use /admin endpoint for those
         return ResponseEntity.ok(grcCalculationService.getDetailsWithScore(gstin));
+    }
+
+    @GetMapping("/details/{gstin}/admin")
+    public ResponseEntity<?> getGstDetailsWithScoreAdmin(
+            @PathVariable String gstin,
+            @RequestHeader(value = "Role", required = false) String role) {
+        if (!"super_admin".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied. super_admin role required.");
+        }
+        return ResponseEntity.ok(grcCalculationService.getDetailsWithScoreAdmin(gstin));
     }
 
     @GetMapping("/details")
@@ -111,6 +123,20 @@ public class GrcController {
     public ResponseEntity<String> cleanupGarbageRecords() {
         int count = grcCalculationService.cleanupInvalidRecords();
         return ResponseEntity.ok("Successfully removed " + count + " invalid/garbage records.");
+    }
+
+    // ── Admin API Refresh Endpoints ───────────────────────────────────────────
+
+    @PostMapping("/admin/refresh")
+    public ResponseEntity<?> adminRefreshFromApi(
+            @RequestBody(required = false) ApiDto.AdminRefreshRequest request,
+            @RequestHeader(value = "Role", required = false) String role) {
+        if (!"super_admin".equals(role)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied. super_admin role required.");
+        }
+        Map<String, String> results = grcCalculationService.refreshFromApi(
+                request != null ? request.getGstins() : null);
+        return ResponseEntity.ok(results);
     }
 
     // ── Rule Config Endpoints ─────────────────────────────────────────────

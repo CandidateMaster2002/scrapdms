@@ -61,4 +61,24 @@ public class GstDetailsEntity {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    // ── Deepvue API fields ────────────────────────────────────────────────────
+
+    @Column(name = "mobile", length = 20)
+    private String mobile;
+
+    @Column(name = "email", length = 200)
+    private String email;
+
+    @Column(name = "api_error")
+    private Boolean apiError;
+
+    @Column(name = "data_source", length = 20)
+    private String dataSource; // "API", "Manual", "Error", "Pending"
+
+    @Column(columnDefinition = "TEXT")
+    private String promoters;
+
+    @Column(name = "pan_number", length = 15)
+    private String panNumber;
+
 }

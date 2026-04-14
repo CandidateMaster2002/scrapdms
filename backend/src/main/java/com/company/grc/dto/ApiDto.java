@@ -49,6 +49,38 @@ public class ApiDto {
         private java.util.Map<String, java.math.BigDecimal> scoreBreakdown;
         private String updatedBy;
         private String source;
+
+        // Deepvue API fields
+        private Boolean apiError;
+        private String dataSource; // "API", "Manual", "Error", "Pending"
+        private String panNumber;
+        private String promoters;
+
+        // Admin-only fields (mobile & email — set to null for non-admin responses)
+        private String mobile;
+        private String email;
+        private LocalDateTime createdAt;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GrcScoreOverrideRequest {
+        private Integer newScore;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class GstFetchRequest {
+        private List<String> gstins;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class AdminRefreshRequest {
+        private List<String> gstins; // null or empty = refresh all non-error GSTINs
     }
 
     @Data
@@ -65,19 +97,10 @@ public class ApiDto {
         private Integer delayCountGstr1;
         private Integer delayCountGstr3b;
         private String updatedBy;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GrcScoreOverrideRequest {
-        private Integer newScore;
-    }
-
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class GstFetchRequest {
-        private List<String> gstins;
+        // Admin-editable fields
+        private String mobile;
+        private String email;
+        private String panNumber;
+        private String promoters;
     }
 }

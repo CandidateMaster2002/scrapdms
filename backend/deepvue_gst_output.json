@@ -1,0 +1,357 @@
+{
+  "code": 200,
+  "timestamp": 1776162400052,
+  "transaction_id": "877015fb694a420989dfc998af51dff5",
+  "sub_code": "SUCCESS",
+  "message": "GSTIN Verified Successfully.",
+  "data": {
+    "contact_details": {
+      "principal": {
+        "address": "KRISHNA MARKET, SHOP NO-232 SEC-20-A, MOTIA KHAN, Mandi Govindgarh, Fatehgarh Sahib, Punjab, 147301",
+        "email": "singh.kuldeep77@yahoo.com",
+        "mobile": "9914551322",
+        "nature_of_business": "Office / Sale Office, Retail Business, Recipient of Goods or Services"
+      },
+      "additional": [
+        {
+          "address": "Sector 7-A, Block-9, Near Kuber Furnace, MANGAL TRADERS, Grand Trunk Road, Sirhind Side, Backside Modern Steels Ltd, Mandi Govindgarh, Fatehgarh Sahib, Punjab, 147301",
+          "email": "singh.kuldeep77@yahoo.com",
+          "mobile": "9914551322",
+          "nature_of_business": "Office / Sale Office, Retail Business, Recipient of Goods or Services, Import, Wholesale Business"
+        }
+      ]
+    },
+    "promoters": ["GAURAV MANGAL "],
+    "annual_turnover": "Slab: Rs. 25 Cr. to 100 Cr. ",
+    "annual_turnover_fy": "2024-2025",
+    "percentage_in_cash_fy": "",
+    "percentage_in_cash": "NA",
+    "aadhaar_validation": "Yes",
+    "aadhaar_validation_date": "2025-08-29",
+    "address_details": {},
+    "gstin": "03ABQPM6530J1ZH",
+    "pan_number": "ABQPM6530J",
+    "business_name": "MANGAL TRADERS",
+    "legal_name": "GAURAV  MANGAL",
+    "center_jurisdiction": "State - CBIC,Zone - CHANDIGARH,Commissionerate - LUDHIANA,Division - MANDI GOBINDGARH,Range - RANGE-II",
+    "state_jurisdiction": "State - Punjab,Division - Ludhiana,District - Fatehgarh Sahib,Ward - Fatehgarh Sahib - Ward No.4 (Jurisdictional Office)",
+    "date_of_registration": "2017-07-01",
+    "constitution_of_business": "Proprietorship",
+    "taxpayer_type": "Regular",
+    "gstin_status": "Active",
+    "date_of_cancellation": "1800-01-01",
+    "field_visit_conducted": "No",
+    "nature_bus_activities": [
+      "Office / Sale Office",
+      "Retail Business",
+      "Recipient of Goods or Services",
+      "Import",
+      "Wholesale Business"
+    ],
+    "nature_of_core_business_activity_code": "TRD:TRR",
+    "nature_of_core_business_activity_description": "Trader, Retailer",
+    "filing_status": [
+      [
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "March",
+          "date_of_filing": "2026-04-09",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "February",
+          "date_of_filing": "2026-03-09",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "January",
+          "date_of_filing": "2026-02-11",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "December",
+          "date_of_filing": "2026-01-10",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "November",
+          "date_of_filing": "2025-12-10",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "October",
+          "date_of_filing": "2025-11-10",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "September",
+          "date_of_filing": "2025-10-09",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "August",
+          "date_of_filing": "2025-09-09",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "July",
+          "date_of_filing": "2025-08-08",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1",
+          "financial_year": "2025-2026",
+          "tax_period": "June",
+          "date_of_filing": "2025-07-11",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR1A",
+          "financial_year": "2025-2026",
+          "tax_period": "August",
+          "date_of_filing": "2025-09-20",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "February",
+          "date_of_filing": "2026-03-22",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "January",
+          "date_of_filing": "2026-02-19",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "December",
+          "date_of_filing": "2026-01-16",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "November",
+          "date_of_filing": "2025-12-20",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "October",
+          "date_of_filing": "2025-11-19",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "September",
+          "date_of_filing": "2025-10-23",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "August",
+          "date_of_filing": "2025-09-20",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "July",
+          "date_of_filing": "2025-08-19",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "June",
+          "date_of_filing": "2025-07-18",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR3B",
+          "financial_year": "2025-2026",
+          "tax_period": "May",
+          "date_of_filing": "2025-06-19",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2024-2025",
+          "tax_period": "Annual",
+          "date_of_filing": "2025-12-29",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2023-2024",
+          "tax_period": "Annual",
+          "date_of_filing": "2024-12-21",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2022-2023",
+          "tax_period": "Annual",
+          "date_of_filing": "2023-12-28",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2021-2022",
+          "tax_period": "Annual",
+          "date_of_filing": "2022-12-29",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2020-2021",
+          "tax_period": "Annual",
+          "date_of_filing": "2022-02-27",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2019-2020",
+          "tax_period": "Annual",
+          "date_of_filing": "2021-03-31",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2018-2019",
+          "tax_period": "Annual",
+          "date_of_filing": "2021-01-08",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9",
+          "financial_year": "2017-2018",
+          "tax_period": "Annual",
+          "date_of_filing": "2020-02-07",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2024-2025",
+          "tax_period": "Annual",
+          "date_of_filing": "2025-12-30",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2023-2024",
+          "tax_period": "Annual",
+          "date_of_filing": "2024-12-21",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2022-2023",
+          "tax_period": "Annual",
+          "date_of_filing": "2023-12-28",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2021-2022",
+          "tax_period": "Annual",
+          "date_of_filing": "2023-01-21",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2020-2021",
+          "tax_period": "Annual",
+          "date_of_filing": "2022-03-21",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2019-2020",
+          "tax_period": "Annual",
+          "date_of_filing": "2021-04-26",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2018-2019",
+          "tax_period": "Annual",
+          "date_of_filing": "2021-02-12",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        },
+        {
+          "return_type": "GSTR9C",
+          "financial_year": "2017-2018",
+          "tax_period": "Annual",
+          "date_of_filing": "2020-02-08",
+          "status": "Filed",
+          "mode_of_filing": "ONLINE"
+        }
+      ]
+    ],
+    "address": null,
+    "hsn_info": {},
+    "filing_frequency": []
+  }
+}

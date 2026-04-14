@@ -12,4 +12,6 @@ public interface GstDetailsRepository extends JpaRepository<GstDetailsEntity, St
 
     @org.springframework.data.jpa.repository.Query("SELECT g.gstin FROM GstDetailsEntity g")
     java.util.List<String> findAllGstins();
+
+    java.util.List<GstDetailsEntity> findByApiErrorFalseOrApiErrorIsNull();
 }

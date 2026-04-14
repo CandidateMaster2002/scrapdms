@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -44,20 +45,18 @@ public class GrcCalculationService {
      * Main entry point: get or create a GRC score for a GSTIN.
      *
      * Flow:
-     * 1. Check if a GRC score row already exists.
-     * 2a. If it exists and is NOT a DUMMY — return the existing score (no
-     * recalculation).
-     * 2b. If it exists and IS a DUMMY — the user hasn't edited details yet; return
-     * dummy.
-     * 3. If no score exists → create stub GST details + insert DUMMY score (15).
+     * 1. If a GRC score already exists, return it immediately.
+     * 2. If not: call Deepvue API via GstFetchService.getGstDetails().
+     *    - API error → save score 15 (Error-Default).
+     *    - API success → calculate and save real score.
      */
     @Transactional
     public ApiDto.GrcResponse calculateScore(String gstin) {
         String trimmedGstin = (gstin != null) ? gstin.trim() : null;
         gstFetchService.validateGstin(trimmedGstin);
 
+        // Return existing score without re-calling API
         Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(trimmedGstin);
-
         if (existingScoreOpt.isPresent()) {
             GrcScoreEntity existingScore = existingScoreOpt.get();
             return ApiDto.GrcResponse.builder()
@@ -67,33 +66,37 @@ public class GrcCalculationService {
                     .build();
         }
 
-        // New GSTIN — create stub GST details with empty values
-        gstFetchService.createStubEntry(trimmedGstin);
+        // New GSTIN — fetch from Deepvue API (creates error stub on failure)
+        GstDetailsEntity details = gstFetchService.getGstDetails(trimmedGstin);
 
-        // Insert dummy score
-        GrcScoreEntity dummyScore = GrcScoreEntity.builder()
-                .gstin(trimmedGstin)
-                .score(config.DUMMY_DEFAULT_SCORE)
-                .calculatedAt(LocalDateTime.now())
-                .updatedBy("Dummy")
-                .build();
-        grcScoreRepository.save(dummyScore);
+        if (Boolean.TRUE.equals(details.getApiError())) {
+            GrcScoreEntity errorScore = GrcScoreEntity.builder()
+                    .gstin(trimmedGstin)
+                    .score(config.DUMMY_DEFAULT_SCORE)
+                    .calculatedAt(LocalDateTime.now())
+                    .updatedBy("Error-Default")
+                    .build();
+            grcScoreRepository.save(errorScore);
+            return ApiDto.GrcResponse.builder()
+                    .gstin(trimmedGstin)
+                    .grcScore(config.DUMMY_DEFAULT_SCORE)
+                    .calculatedAt(errorScore.getCalculatedAt())
+                    .build();
+        }
+
+        recalculateStoredScore(trimmedGstin);
+        GrcScoreEntity scoreEntity = grcScoreRepository.findById(trimmedGstin)
+                .orElseThrow(() -> new RuntimeException("Score not found after recalculation for: " + trimmedGstin));
 
         return ApiDto.GrcResponse.builder()
                 .gstin(trimmedGstin)
-                .grcScore(config.DUMMY_DEFAULT_SCORE)
-                .calculatedAt(dummyScore.getCalculatedAt())
+                .grcScore(scoreEntity.getScore())
+                .calculatedAt(scoreEntity.getCalculatedAt())
                 .build();
     }
 
-    /**
-     * Forces a recalculation of the score for an existing GSTIN based on current DB
-     * values.
-     * Used by the /fetch endpoint and bulk recalculate.
-     */
     @Transactional
     public ApiDto.GrcResponse forceCalculateScore(String gstin) {
-        // Ensure the GSTIN exists (creates stub if not)
         gstFetchService.getGstDetails(gstin);
         recalculateStoredScore(gstin);
 
@@ -107,12 +110,11 @@ public class GrcCalculationService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public ApiDto.GstAppDetailsResponse getDetailsWithScore(GstDetailsEntity details) {
-        return getDetailsWithScore(details, false);
-    }
+    // ── Detail retrieval ──────────────────────────────────────────────────────
 
-    private ApiDto.GstAppDetailsResponse getDetailsWithScore(GstDetailsEntity details, boolean includeBreakdown) {
+    private ApiDto.GstAppDetailsResponse buildResponse(GstDetailsEntity details,
+                                                        boolean includeBreakdown,
+                                                        boolean includePrivate) {
         String gstin = details.getGstin();
         ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder = ApiDto.GstAppDetailsResponse.builder()
                 .gstin(gstin)
@@ -126,7 +128,16 @@ public class GrcCalculationService {
                 .aggregateTurnover(details.getAggregateTurnover())
                 .delayCountGstr1(details.getDelayCountGstr1())
                 .delayCountGstr3b(details.getDelayCountGstr3b())
-                .source(details.getSource());
+                .source(details.getSource())
+                .apiError(details.getApiError())
+                .dataSource(details.getDataSource())
+                .panNumber(details.getPanNumber())
+                .promoters(details.getPromoters())
+                .createdAt(details.getCreatedAt());
+
+        if (includePrivate) {
+            builder.mobile(details.getMobile()).email(details.getEmail());
+        }
 
         grcScoreRepository.findById(gstin).ifPresent(score -> {
             builder.grcScore(score.getScore())
@@ -148,25 +159,47 @@ public class GrcCalculationService {
     public ApiDto.GstAppDetailsResponse getDetailsWithScore(String gstin) {
         GstDetailsEntity details = gstDetailsRepository.findById(gstin)
                 .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
-        return getDetailsWithScore(details, true);
+        return buildResponse(details, true, false);
+    }
+
+    @Transactional(readOnly = true)
+    public ApiDto.GstAppDetailsResponse getDetailsWithScoreAdmin(String gstin) {
+        GstDetailsEntity details = gstDetailsRepository.findById(gstin)
+                .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
+        return buildResponse(details, true, true);
+    }
+
+    @Transactional(readOnly = true)
+    public ApiDto.GstAppDetailsResponse getDetailsWithScore(GstDetailsEntity details) {
+        return buildResponse(details, false, false);
     }
 
     @Transactional(readOnly = true)
     public List<ApiDto.GstAppDetailsResponse> getAllDetailsWithScores() {
         List<GstDetailsEntity> allDetails = gstDetailsRepository.findAll();
-        // Batch fetch all scores into memory to avoid N+1 findById queries
         Map<String, GrcScoreEntity> scoreMap = grcScoreRepository.findAll().stream()
                 .collect(Collectors.toMap(GrcScoreEntity::getGstin, s -> s));
 
         return allDetails.stream()
                 .map(details -> {
-                    ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder = ApiDto.GstAppDetailsResponse.builder()
-                            .gstin(details.getGstin())
-                            .tradeName(details.getTradeName())
-                            .legalName(details.getLegalName())
-                            .gstStatus(details.getGstStatus())
-                            .delayCountGstr1(details.getDelayCountGstr1())
-                            .delayCountGstr3b(details.getDelayCountGstr3b());
+                    ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder =
+                            ApiDto.GstAppDetailsResponse.builder()
+                                    .gstin(details.getGstin())
+                                    .tradeName(details.getTradeName())
+                                    .legalName(details.getLegalName())
+                                    .gstStatus(details.getGstStatus())
+                                    .delayCountGstr1(details.getDelayCountGstr1())
+                                    .delayCountGstr3b(details.getDelayCountGstr3b())
+                                    .registrationDate(details.getRegistrationDate())
+                                    .aggregateTurnover(details.getAggregateTurnover())
+                                    .gstType(details.getGstType())
+                                    .address(details.getAddress())
+                                    .source(details.getSource())
+                                    .apiError(details.getApiError())
+                                    .dataSource(details.getDataSource())
+                                    .panNumber(details.getPanNumber())
+                                    .promoters(details.getPromoters())
+                                    .createdAt(details.getCreatedAt());
 
                     GrcScoreEntity score = scoreMap.get(details.getGstin());
                     if (score != null) {
@@ -174,54 +207,41 @@ public class GrcCalculationService {
                                 .scoreCalculatedAt(score.getCalculatedAt())
                                 .updatedBy(score.getUpdatedBy());
                     }
-                    
-                    // Fields needed for Quick Edit view toggle
-                    builder.registrationDate(details.getRegistrationDate())
-                           .aggregateTurnover(details.getAggregateTurnover())
-                           .gstType(details.getGstType())
-                           .address(details.getAddress())
-                           .source(details.getSource());
                     return builder.build();
                 })
                 .collect(Collectors.toList());
     }
+
+    // ── Update / Override ─────────────────────────────────────────────────────
 
     @Transactional
     public ApiDto.GstAppDetailsResponse updateGstDetails(String gstin, ApiDto.GstDetailsUpdateRequest request) {
         GstDetailsEntity details = gstDetailsRepository.findById(gstin)
                 .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
 
-        if (request.getGstType() != null)
-            details.setGstType(request.getGstType());
-        if (request.getTradeName() != null)
-            details.setTradeName(request.getTradeName());
-        if (request.getLegalName() != null)
-            details.setLegalName(request.getLegalName());
-        if (request.getRegistrationDate() != null)
-            details.setRegistrationDate(request.getRegistrationDate());
-        if (request.getGstStatus() != null)
-            details.setGstStatus(request.getGstStatus());
-        if (request.getAddress() != null)
-            details.setAddress(request.getAddress());
-        if (request.getAggregateTurnover() != null)
-            details.setAggregateTurnover(request.getAggregateTurnover());
-        if (request.getDelayCountGstr1() != null)
-            details.setDelayCountGstr1(request.getDelayCountGstr1());
-        if (request.getDelayCountGstr3b() != null)
-            details.setDelayCountGstr3b(request.getDelayCountGstr3b());
+        if (request.getGstType() != null) details.setGstType(request.getGstType());
+        if (request.getTradeName() != null) details.setTradeName(request.getTradeName());
+        if (request.getLegalName() != null) details.setLegalName(request.getLegalName());
+        if (request.getRegistrationDate() != null) details.setRegistrationDate(request.getRegistrationDate());
+        if (request.getGstStatus() != null) details.setGstStatus(request.getGstStatus());
+        if (request.getAddress() != null) details.setAddress(request.getAddress());
+        if (request.getAggregateTurnover() != null) details.setAggregateTurnover(request.getAggregateTurnover());
+        if (request.getDelayCountGstr1() != null) details.setDelayCountGstr1(request.getDelayCountGstr1());
+        if (request.getDelayCountGstr3b() != null) details.setDelayCountGstr3b(request.getDelayCountGstr3b());
+        if (request.getMobile() != null) details.setMobile(request.getMobile());
+        if (request.getEmail() != null) details.setEmail(request.getEmail());
+        if (request.getPanNumber() != null) details.setPanNumber(request.getPanNumber());
+        if (request.getPromoters() != null) details.setPromoters(request.getPromoters());
 
-        // Mark source as 'From UI' if modified manually
-        if (details.getSource() == null || !details.getSource().equals("From UI")) {
-            details.setSource("From UI");
-        }
-
-        // Mark as user-updated
+        // Mark as manual override — apiError is intentionally NOT cleared here.
+        // If the API previously failed for this GSTIN it should remain flagged permanently
+        // so bulk refresh continues to skip it (no wasted API quota).
+        details.setSource("Manual");
+        details.setDataSource("Manual");
         details.setLastApiSync(LocalDateTime.now());
         gstDetailsRepository.save(details);
 
-        // Recalculate score based on newly saved details
         recalculateStoredScore(gstin, request.getUpdatedBy());
-
         return getDetailsWithScore(gstin);
     }
 
@@ -237,15 +257,42 @@ public class GrcCalculationService {
                 .updatedBy("super_admin_manual")
                 .build();
         grcScoreRepository.save(scoreEntity);
-
         return getDetailsWithScore(gstin);
     }
 
+    // ── Admin Refresh from API ────────────────────────────────────────────────
+
     /**
-     * Recalculates and persists the GRC score for a given GSTIN using current DB
-     * values.
-     * Increments the version number (or initialises to v1 if DUMMY_VALUE).
+     * Refreshes GSTIN data from Deepvue API.
+     * If gstins is null/empty: refreshes all non-error GSTINs (bulk, skips error ones).
+     * If gstins is provided: refreshes exactly those GSTINs (admin explicitly chose them, even errors).
+     * Returns per-GSTIN result map.
      */
+    @Transactional
+    public Map<String, String> refreshFromApi(List<String> gstins) {
+        List<String> toRefresh;
+        if (gstins == null || gstins.isEmpty()) {
+            toRefresh = gstDetailsRepository.findByApiErrorFalseOrApiErrorIsNull()
+                    .stream().map(GstDetailsEntity::getGstin).collect(Collectors.toList());
+        } else {
+            toRefresh = gstins.stream().map(String::trim).collect(Collectors.toList());
+        }
+
+        Map<String, String> results = new LinkedHashMap<>();
+        for (String gstin : toRefresh) {
+            try {
+                gstFetchService.refreshFromApi(gstin);
+                recalculateStoredScore(gstin);
+                results.put(gstin, "refreshed");
+            } catch (Exception e) {
+                results.put(gstin, "error: " + e.getMessage());
+            }
+        }
+        return results;
+    }
+
+    // ── Score calculation internals ───────────────────────────────────────────
+
     @Transactional
     public void recalculateStoredScore(String gstin, String updatedBy) {
         GstDetailsEntity details = gstDetailsRepository.findById(gstin)
@@ -274,9 +321,6 @@ public class GrcCalculationService {
         gstDetailsRepository.deleteById(gstin);
     }
 
-    /**
-     * Bulk recalculates scores for all GSTINs in the database.
-     */
     @Transactional
     public void recalculateAll() {
         List<String> allGstins = gstDetailsRepository.findAllGstins();
@@ -285,21 +329,15 @@ public class GrcCalculationService {
         }
     }
 
-    /**
-     * Finds and deletes GST records that do not match valid GSTIN format.
-     * Useful for purging "garbage" entries like "0", "N/A", or whitespace.
-     */
     @Transactional
     public int cleanupInvalidRecords() {
         List<String> allGstins = gstDetailsRepository.findAllGstins();
         int count = 0;
         for (String gstin : allGstins) {
             try {
-                // We use trim() here because existing garbage might have spaces
                 String trimmed = gstin != null ? gstin.trim() : null;
                 gstFetchService.validateGstin(trimmed);
             } catch (IllegalArgumentException e) {
-                // Invalid — delete it
                 deleteGstDetails(gstin);
                 count++;
             }

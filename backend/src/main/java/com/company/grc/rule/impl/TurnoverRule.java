@@ -37,11 +37,18 @@ public class TurnoverRule implements GrcRule {
     }
 
     private double parseTurnoverCr(String raw) {
+        boolean isLakhs = raw.toLowerCase().contains("lakh");
         String[] tokens = raw.replaceAll("[^0-9.]", " ").trim().split("\\s+");
-        double max = 0;
+        double sum = 0;
+        int count = 0;
         for (String t : tokens) {
-            try { max = Math.max(max, Double.parseDouble(t)); } catch (NumberFormatException ignored) {}
+            if (t.isBlank()) continue;
+            try {
+                double val = Double.parseDouble(t);
+                sum += isLakhs ? val / 100.0 : val; // convert lakhs to crores
+                count++;
+            } catch (NumberFormatException ignored) {}
         }
-        return max;
+        return count > 0 ? sum / count : 0;
     }
 }
