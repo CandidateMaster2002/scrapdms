@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Optional;
 
@@ -19,8 +18,6 @@ public class GstFetchService {
 
     private static final java.util.regex.Pattern GSTIN_PATTERN = java.util.regex.Pattern
             .compile("^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$", java.util.regex.Pattern.CASE_INSENSITIVE);
-
-    private static final DateTimeFormatter DATE_FORMAT_DDMMYYYY = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
     private final GstDetailsRepository gstDetailsRepository;
     private final EmailService emailService;
@@ -82,16 +79,9 @@ public class GstFetchService {
             return saved;
 
         } catch (Exception e) {
-            System.err.println("fetchAndSaveFromApi failed for GSTIN " + gstin + ": " + e.getMessage());
-            
-            String errMsg = e.getMessage() != null ? e.getMessage() : "Unknown API Error";
-            if (errMsg.length() > 50) {
-                errMsg = errMsg.substring(0, 47) + "...";
-            }
-            
             GstDetailsEntity errorEntity = GstDetailsEntity.builder()
                     .gstin(gstin)
-                    .source(errMsg)
+                    .source("Error")
                     .dataSource("Error")
                     .apiError(true)
                     .lastApiSync(LocalDateTime.now())
@@ -126,7 +116,6 @@ public class GstFetchService {
             entity.setLastApiSync(LocalDateTime.now());
             return gstDetailsRepository.save(entity);
         } catch (Exception e) {
-            System.err.println("refreshFromApi failed for GSTIN " + gstin + ": " + e.getMessage());
             entity.setApiError(true);
             entity.setDataSource("Error");
             entity.setLastApiSync(LocalDateTime.now());
@@ -148,16 +137,9 @@ public class GstFetchService {
 
         if (data.getDateOfRegistration() != null && !data.getDateOfRegistration().isBlank()
                 && !data.getDateOfRegistration().startsWith("1800")) {
-            String dateStr = data.getDateOfRegistration();
             try {
-                // Try ISO format first (yyyy-MM-dd), then Deepvue's dd/MM/yyyy format
-                try {
-                    entity.setRegistrationDate(LocalDate.parse(dateStr));
-                } catch (Exception e1) {
-                    entity.setRegistrationDate(LocalDate.parse(dateStr, DATE_FORMAT_DDMMYYYY));
-                }
-            } catch (Exception e) {
-                System.err.println("Could not parse registration date '" + dateStr + "' for GSTIN " + entity.getGstin());
+                entity.setRegistrationDate(LocalDate.parse(data.getDateOfRegistration()));
+            } catch (Exception ignored) {
             }
         }
 
