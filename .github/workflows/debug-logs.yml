@@ -1,0 +1,21 @@
+name: Fetch Server Logs
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  fetch-logs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and get logs
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo "==== LAST 100 LINES OF SERVER CRASH LOG ===="
+            sudo journalctl -u app.service -n 100 --no-pager
+            echo "============================================"
