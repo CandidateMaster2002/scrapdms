@@ -79,9 +79,16 @@ public class GstFetchService {
             return saved;
 
         } catch (Exception e) {
+            System.err.println("fetchAndSaveFromApi failed for GSTIN " + gstin + ": " + e.getMessage());
+            
+            String errMsg = e.getMessage() != null ? e.getMessage() : "Unknown API Error";
+            if (errMsg.length() > 50) {
+                errMsg = errMsg.substring(0, 47) + "...";
+            }
+            
             GstDetailsEntity errorEntity = GstDetailsEntity.builder()
                     .gstin(gstin)
-                    .source("Error")
+                    .source(errMsg)
                     .dataSource("Error")
                     .apiError(true)
                     .lastApiSync(LocalDateTime.now())

@@ -49,6 +49,7 @@ public class DeepvueApiService {
         // Fetch new token
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
         MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
         form.add("client_id", clientId);
@@ -88,6 +89,7 @@ public class DeepvueApiService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.set("Authorization", "Bearer " + token);
         headers.set("x-api-key", apiKey);
+        headers.set(HttpHeaders.USER_AGENT, "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
 
         HttpEntity<Void> request = new HttpEntity<>(headers);
         ResponseEntity<String> response;
