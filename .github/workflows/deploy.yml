@@ -29,6 +29,15 @@ jobs:
             if [ $? -ne 0 ]; then echo "MAVEN BUILD FAILED"; exit 1; fi
             sudo systemctl stop app.service
             sudo cp target/grc-service-0.0.1-SNAPSHOT.jar /opt/app/app.jar
+            
+            # Auto-inject the missing deepvue properties into the server's external config if it exists
+            if sudo test -f "/opt/app/application.properties"; then
+                sudo sed -i '/deepvue/d' /opt/app/application.properties
+                echo "deepvue.client-id=bcab10a7bd" | sudo tee -a /opt/app/application.properties
+                echo "deepvue.client-secret=f7c48d2e4aaf4e30b4f49c212621886f" | sudo tee -a /opt/app/application.properties
+                echo "deepvue.api-key=f7c48d2e4aaf4e30b4f49c212621886f" | sudo tee -a /opt/app/application.properties
+            fi
+            
             sudo systemctl start app.service
             sleep 5
             sudo systemctl status app.service --no-pager
