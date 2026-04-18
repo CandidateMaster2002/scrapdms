@@ -16,6 +16,8 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            echo "==== LAST 100 LINES OF SERVER CRASH LOG ===="
-            sudo journalctl -u app.service -n 100 --no-pager
-            echo "============================================"
+            echo "==== /opt/app/ Contents ===="
+            ls -la /opt/app/
+            echo "==== EXTERNAL APPLICATION.PROPERTIES ===="
+            sudo cat /opt/app/application* || echo "None found"
+            echo "========================================="
