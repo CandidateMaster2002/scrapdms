@@ -6,6 +6,7 @@ import com.company.grc.repository.GstDetailsRepository;
 import com.company.grc.service.DeepvueApiService.DeepvueApiException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -105,7 +106,7 @@ public class GstFetchService {
      * Used by admin-triggered refresh. Creates entity if it doesn't exist.
      * Throws RuntimeException if the API call fails (so caller can record error).
      */
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public GstDetailsEntity refreshFromApi(String gstin) {
         GstDetailsEntity entity = gstDetailsRepository.findById(gstin)
                 .orElseGet(() -> GstDetailsEntity.builder()

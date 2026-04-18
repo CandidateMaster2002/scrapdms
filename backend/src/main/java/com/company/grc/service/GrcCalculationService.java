@@ -9,6 +9,7 @@ import com.company.grc.repository.GstDetailsRepository;
 import com.company.grc.rule.GrcRuleEngine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -268,7 +269,6 @@ public class GrcCalculationService {
      * If gstins is provided: refreshes exactly those GSTINs (admin explicitly chose them, even errors).
      * Returns per-GSTIN result map.
      */
-    @Transactional
     public Map<String, String> refreshFromApi(List<String> gstins) {
         List<String> toRefresh;
         if (gstins == null || gstins.isEmpty()) {
@@ -293,7 +293,7 @@ public class GrcCalculationService {
 
     // ── Score calculation internals ───────────────────────────────────────────
 
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void recalculateStoredScore(String gstin, String updatedBy) {
         GstDetailsEntity details = gstDetailsRepository.findById(gstin)
                 .orElseThrow(() -> new RuntimeException("GSTIN not found: " + gstin));
