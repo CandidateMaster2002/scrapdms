@@ -135,7 +135,8 @@ public class GrcController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied. super_admin role required.");
         }
         Map<String, String> results = grcCalculationService.refreshFromApi(
-                request != null ? request.getGstins() : null);
+                request != null ? request.getGstins() : null,
+                request != null ? request.getUpdatedBy() : null);
         return ResponseEntity.ok(results);
     }
 

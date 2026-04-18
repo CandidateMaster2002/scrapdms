@@ -271,7 +271,7 @@ public class GrcCalculationService {
      * If gstins is provided: refreshes exactly those GSTINs (admin explicitly chose them, even errors).
      * Returns per-GSTIN result map.
      */
-    public Map<String, String> refreshFromApi(List<String> gstins) {
+    public Map<String, String> refreshFromApi(List<String> gstins, String updatedBy) {
         List<String> toRefresh;
         if (gstins == null || gstins.isEmpty()) {
             toRefresh = gstDetailsRepository.findByApiErrorFalseOrApiErrorIsNull()
@@ -284,7 +284,7 @@ public class GrcCalculationService {
         for (String gstin : toRefresh) {
             try {
                 gstFetchService.refreshFromApi(gstin);
-                recalculateStoredScore(gstin);
+                recalculateStoredScore(gstin, updatedBy);
                 results.put(gstin, "refreshed");
             } catch (Exception e) {
                 results.put(gstin, "error: " + e.getMessage());

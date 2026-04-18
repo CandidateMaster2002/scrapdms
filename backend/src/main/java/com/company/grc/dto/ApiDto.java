@@ -81,6 +81,7 @@ public class ApiDto {
     @AllArgsConstructor
     public static class AdminRefreshRequest {
         private List<String> gstins; // null or empty = refresh all non-error GSTINs
+        private String updatedBy;
     }
 
     @Data
