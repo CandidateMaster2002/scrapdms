@@ -200,6 +200,8 @@ public class GrcCalculationService {
                                     .dataSource(details.getDataSource())
                                     .panNumber(details.getPanNumber())
                                     .promoters(details.getPromoters())
+                                    .mobile(details.getMobile())
+                                    .email(details.getEmail())
                                     .createdAt(details.getCreatedAt());
 
                     GrcScoreEntity score = scoreMap.get(details.getGstin());
