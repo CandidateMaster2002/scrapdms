@@ -11,7 +11,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -169,25 +174,103 @@ public class GstFetchService {
             entity.setAddress(principal.getAddress());
         }
 
-        // Count filing delays
-        int delayGstr1 = 0, delayGstr3b = 0;
+        // Count filing delays using date-based rule (see GSTR_DELAY_COUNT_RULE.md)
+        calculateDelayCounts(entity, data);
+    }
+
+    /**
+     * Counts GSTR-1 and GSTR-3B delays for each month from Jan 2025
+     * (or registration month, whichever is later) through last completed month.
+     *
+     * A month is a delay only when:
+     *   1. Today is strictly after the due date for that return type, AND
+     *   2. The return was either not found in filing_status OR was filed after the due date.
+     *
+     * GSTR-1 due: 11th of following month.
+     * GSTR-3B due: 21st of following month (25 Oct for September tax period).
+     */
+    private void calculateDelayCounts(GstDetailsEntity entity, DeepvueGstDto.DataPayload data) {
+        // Build lookup: "RETURNTYPE|FY|TaxPeriodMonthName" -> FilingEntry
+        Map<String, DeepvueGstDto.FilingEntry> filingMap = new HashMap<>();
         if (data.getFilingStatus() != null) {
             for (List<DeepvueGstDto.FilingEntry> group : data.getFilingStatus()) {
                 if (group == null) continue;
                 for (DeepvueGstDto.FilingEntry entry : group) {
-                    if (entry == null || entry.getStatus() == null) continue;
-                    if ("GSTR1".equalsIgnoreCase(entry.getReturnType())
-                            && !"Filed".equalsIgnoreCase(entry.getStatus())) {
-                        delayGstr1++;
-                    }
-                    if ("GSTR3B".equalsIgnoreCase(entry.getReturnType())
-                            && !"Filed".equalsIgnoreCase(entry.getStatus())) {
-                        delayGstr3b++;
-                    }
+                    if (entry == null || entry.getReturnType() == null) continue;
+                    String key = entry.getReturnType().toUpperCase()
+                            + "|" + entry.getFinancialYear()
+                            + "|" + entry.getTaxPeriod();
+                    filingMap.put(key, entry);
                 }
             }
         }
+
+        LocalDate today = LocalDate.now();
+
+        // Start from Jan 2025, or registration month if later
+        YearMonth fixedStart = YearMonth.of(2025, 1);
+        YearMonth start = fixedStart;
+        if (entity.getRegistrationDate() != null) {
+            YearMonth regMonth = YearMonth.from(entity.getRegistrationDate());
+            if (regMonth.isAfter(fixedStart)) {
+                start = regMonth;
+            }
+        }
+
+        YearMonth lastCompleted = YearMonth.now().minusMonths(1);
+
+        int delayGstr1 = 0, delayGstr3b = 0;
+
+        for (YearMonth ym = start; !ym.isAfter(lastCompleted); ym = ym.plusMonths(1)) {
+            int month = ym.getMonthValue();
+            int year  = ym.getYear();
+
+            // Financial year: April starts new FY
+            String fy = (month >= 4)
+                    ? year + "-" + (year + 1)
+                    : (year - 1) + "-" + year;
+
+            String taxPeriod = ym.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH);
+            YearMonth nextYm = ym.plusMonths(1);
+
+            // ── GSTR-1 ──────────────────────────────────────────────
+            LocalDate gstr1Due = LocalDate.of(nextYm.getYear(), nextYm.getMonth(), 11);
+            if (today.isAfter(gstr1Due)) {
+                String key = "GSTR1|" + fy + "|" + taxPeriod;
+                DeepvueGstDto.FilingEntry entry = filingMap.get(key);
+                if (entry == null || isFiledLate(entry, gstr1Due)) {
+                    delayGstr1++;
+                }
+            }
+
+            // ── GSTR-3B ─────────────────────────────────────────────
+            // September tax period: due 25 Oct; all others: 21st of next month
+            int gstr3bDay = (month == 9) ? 25 : 21;
+            LocalDate gstr3bDue = LocalDate.of(nextYm.getYear(), nextYm.getMonth(), gstr3bDay);
+            if (today.isAfter(gstr3bDue)) {
+                String key = "GSTR3B|" + fy + "|" + taxPeriod;
+                DeepvueGstDto.FilingEntry entry = filingMap.get(key);
+                if (entry == null || isFiledLate(entry, gstr3bDue)) {
+                    delayGstr3b++;
+                }
+            }
+        }
+
         entity.setDelayCountGstr1(delayGstr1);
         entity.setDelayCountGstr3b(delayGstr3b);
+    }
+
+    /**
+     * Returns true if the entry's date_of_filing is missing or strictly after dueDate.
+     */
+    private boolean isFiledLate(DeepvueGstDto.FilingEntry entry, LocalDate dueDate) {
+        if (entry.getDateOfFiling() == null || entry.getDateOfFiling().isBlank()) {
+            return true;
+        }
+        try {
+            return LocalDate.parse(entry.getDateOfFiling()).isAfter(dueDate);
+        } catch (Exception e) {
+            return true; // unparseable date → treat as not filed
+        }
     }
 }

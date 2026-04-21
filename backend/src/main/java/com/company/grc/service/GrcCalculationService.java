@@ -271,6 +271,7 @@ public class GrcCalculationService {
      * If gstins is provided: refreshes exactly those GSTINs (admin explicitly chose them, even errors).
      * Returns per-GSTIN result map.
      */
+    @Transactional
     public Map<String, String> refreshFromApi(List<String> gstins, String updatedBy) {
         List<String> toRefresh;
         if (gstins == null || gstins.isEmpty()) {
