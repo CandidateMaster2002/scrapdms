@@ -135,12 +135,19 @@ public class GstFetchService {
     /**
      * Maps Deepvue API data payload fields onto an existing entity instance.
      */
+    private String cleanTurnover(String raw) {
+        if (raw == null || raw.isBlank()) return raw;
+        return raw.replaceFirst("(?i)^slab:\\s*", "")
+                  .replaceFirst("(?i)^Rs\\.\\s*", "")
+                  .trim();
+    }
+
     private void mapApiDataToEntity(GstDetailsEntity entity, DeepvueGstDto.DataPayload data) {
         entity.setTradeName(data.getBusinessName());
         entity.setLegalName(data.getLegalName());
         entity.setGstType(data.getConstitutionOfBusiness());
         entity.setGstStatus(data.getGstinStatus());
-        entity.setAggregateTurnover(data.getAnnualTurnover());
+        entity.setAggregateTurnover(cleanTurnover(data.getAnnualTurnover()));
         entity.setPanNumber(data.getPanNumber());
 
         if (data.getDateOfRegistration() != null && !data.getDateOfRegistration().isBlank()
