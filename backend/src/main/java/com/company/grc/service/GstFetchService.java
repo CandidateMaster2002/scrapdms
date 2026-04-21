@@ -31,8 +31,8 @@ public class GstFetchService {
 
     @Autowired
     public GstFetchService(GstDetailsRepository gstDetailsRepository,
-                           EmailService emailService,
-                           DeepvueApiService deepvueApiService) {
+            EmailService emailService,
+            DeepvueApiService deepvueApiService) {
         this.gstDetailsRepository = gstDetailsRepository;
         this.emailService = emailService;
         this.deepvueApiService = deepvueApiService;
@@ -46,7 +46,8 @@ public class GstFetchService {
 
     /**
      * Returns existing GST details from DB.
-     * If not found, calls Deepvue API to fetch and store; on API error stores a stub with apiError=true.
+     * If not found, calls Deepvue API to fetch and store; on API error stores a
+     * stub with apiError=true.
      */
     @Transactional
     public GstDetailsEntity getGstDetails(String gstin) {
@@ -86,12 +87,12 @@ public class GstFetchService {
 
         } catch (Exception e) {
             System.err.println("fetchAndSaveFromApi failed for GSTIN " + gstin + ": " + e.getMessage());
-            
+
             String errMsg = e.getMessage() != null ? e.getMessage() : "Unknown API Error";
             if (errMsg.length() > 50) {
                 errMsg = errMsg.substring(0, 47) + "...";
             }
-            
+
             GstDetailsEntity errorEntity = GstDetailsEntity.builder()
                     .gstin(gstin)
                     .source(errMsg)
@@ -141,10 +142,11 @@ public class GstFetchService {
      * Maps Deepvue API data payload fields onto an existing entity instance.
      */
     private String cleanTurnover(String raw) {
-        if (raw == null || raw.isBlank()) return "Below 1 Cr.";
+        if (raw == null || raw.isBlank())
+            return "Below 1 Cr.";
         String cleaned = raw.replaceFirst("(?i)^slab:\\s*", "")
-                            .replaceFirst("(?i)^Rs\\.\\s*", "")
-                            .trim();
+                .replaceFirst("(?i)^Rs\\.\\s*", "")
+                .trim();
         return cleaned.isBlank() ? "Below 1 Cr." : cleaned;
     }
 
@@ -184,22 +186,25 @@ public class GstFetchService {
      * (or registration month, whichever is later) through last completed month.
      *
      * A month is a delay only when:
-     *   1. Today is strictly after the due date for that return type, AND
-     *   2. The return was either not found in filing_status OR was filed after the due date.
+     * 1. Today is strictly after the due date for that return type, AND
+     * 2. The return was either not found in filing_status OR was filed after the
+     * due date.
      *
      * GSTR-1 due: 11th of following month.
      * GSTR-3B due: 21st of following month (25 Oct for September tax period).
      */
     private void calculateDelayCounts(GstDetailsEntity entity, DeepvueGstDto.DataPayload data) {
-        // Build lookup: "RETURNTYPE|FY|TaxPeriodMonthName" -> FilingEntry
+        // Build lookup: "RETURNTYPE|TaxPeriodMonthName" -> FilingEntry (ignore
+        // financial year)
         Map<String, DeepvueGstDto.FilingEntry> filingMap = new HashMap<>();
         if (data.getFilingStatus() != null) {
             for (List<DeepvueGstDto.FilingEntry> group : data.getFilingStatus()) {
-                if (group == null) continue;
+                if (group == null)
+                    continue;
                 for (DeepvueGstDto.FilingEntry entry : group) {
-                    if (entry == null || entry.getReturnType() == null) continue;
+                    if (entry == null || entry.getReturnType() == null)
+                        continue;
                     String key = entry.getReturnType().toUpperCase()
-                            + "|" + entry.getFinancialYear()
                             + "|" + entry.getTaxPeriod();
                     filingMap.put(key, entry);
                 }
@@ -224,7 +229,7 @@ public class GstFetchService {
 
         for (YearMonth ym = start; !ym.isAfter(lastCompleted); ym = ym.plusMonths(1)) {
             int month = ym.getMonthValue();
-            int year  = ym.getYear();
+            int year = ym.getYear();
 
             // Financial year: April starts new FY
             String fy = (month >= 4)
@@ -237,7 +242,7 @@ public class GstFetchService {
             // ── GSTR-1 ──────────────────────────────────────────────
             LocalDate gstr1Due = LocalDate.of(nextYm.getYear(), nextYm.getMonth(), 11);
             if (today.isAfter(gstr1Due)) {
-                String key = "GSTR1|" + fy + "|" + taxPeriod;
+                String key = "GSTR1|" + taxPeriod;
                 DeepvueGstDto.FilingEntry entry = filingMap.get(key);
                 // Only count as delay if entry exists but was filed late;
                 // missing entries are skipped (data not available)
@@ -251,7 +256,7 @@ public class GstFetchService {
             int gstr3bDay = (month == 9) ? 25 : 21;
             LocalDate gstr3bDue = LocalDate.of(nextYm.getYear(), nextYm.getMonth(), gstr3bDay);
             if (today.isAfter(gstr3bDue)) {
-                String key = "GSTR3B|" + fy + "|" + taxPeriod;
+                String key = "GSTR3B|" + taxPeriod;
                 DeepvueGstDto.FilingEntry entry = filingMap.get(key);
                 // Only count as delay if entry exists but was filed late;
                 // missing entries are skipped (data not available)
@@ -266,7 +271,8 @@ public class GstFetchService {
     }
 
     /**
-     * Returns true if the entry's date_of_filing is missing or strictly after dueDate.
+     * Returns true if the entry's date_of_filing is missing or strictly after
+     * dueDate.
      */
     private boolean isFiledLate(DeepvueGstDto.FilingEntry entry, LocalDate dueDate) {
         if (entry.getDateOfFiling() == null || entry.getDateOfFiling().isBlank()) {
