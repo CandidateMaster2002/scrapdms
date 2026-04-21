@@ -141,10 +141,11 @@ public class GstFetchService {
      * Maps Deepvue API data payload fields onto an existing entity instance.
      */
     private String cleanTurnover(String raw) {
-        if (raw == null || raw.isBlank()) return raw;
-        return raw.replaceFirst("(?i)^slab:\\s*", "")
-                  .replaceFirst("(?i)^Rs\\.\\s*", "")
-                  .trim();
+        if (raw == null || raw.isBlank()) return "Below 1 Cr.";
+        String cleaned = raw.replaceFirst("(?i)^slab:\\s*", "")
+                            .replaceFirst("(?i)^Rs\\.\\s*", "")
+                            .trim();
+        return cleaned.isBlank() ? "Below 1 Cr." : cleaned;
     }
 
     private void mapApiDataToEntity(GstDetailsEntity entity, DeepvueGstDto.DataPayload data) {
@@ -238,7 +239,9 @@ public class GstFetchService {
             if (today.isAfter(gstr1Due)) {
                 String key = "GSTR1|" + fy + "|" + taxPeriod;
                 DeepvueGstDto.FilingEntry entry = filingMap.get(key);
-                if (entry == null || isFiledLate(entry, gstr1Due)) {
+                // Only count as delay if entry exists but was filed late;
+                // missing entries are skipped (data not available)
+                if (entry != null && isFiledLate(entry, gstr1Due)) {
                     delayGstr1++;
                 }
             }
@@ -250,7 +253,9 @@ public class GstFetchService {
             if (today.isAfter(gstr3bDue)) {
                 String key = "GSTR3B|" + fy + "|" + taxPeriod;
                 DeepvueGstDto.FilingEntry entry = filingMap.get(key);
-                if (entry == null || isFiledLate(entry, gstr3bDue)) {
+                // Only count as delay if entry exists but was filed late;
+                // missing entries are skipped (data not available)
+                if (entry != null && isFiledLate(entry, gstr3bDue)) {
                     delayGstr3b++;
                 }
             }
