@@ -1,5 +1,6 @@
 package com.company.grc.dto;
 
+
 import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -15,8 +16,10 @@ import java.time.LocalDateTime;
 public class PanGstr7DataResponse {
 
     private String panNumber;
-    private String hsnCode; // Added to surface existing HSN
-    private boolean isApplicable;
+    private Long categoryId;
+    private String categoryName;
+    private List<String> hsnCodes;
+    private Boolean isApplicable;
     private List<GstinData> gstins;
 
     @Data
@@ -27,8 +30,9 @@ public class PanGstr7DataResponse {
         private String gstin;
         private String gstr7Status;
         private Integer gstr7DelayCount;
+        private Integer gstr7MissedCount;
         private LocalDateTime gstr7LastUpdated;
-        private String gstType; // Added to know if GSTD
+        private String gstType;
         private String gstdNo;
     }
 }
