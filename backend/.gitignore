@@ -38,7 +38,3 @@ build/
 ### Logs ###
 logs/
 *.log
-
-### Secrets — never commit these ###
-# application.properties is tracked (no secrets inside — use env vars)
-src/main/resources/google-service-account.json

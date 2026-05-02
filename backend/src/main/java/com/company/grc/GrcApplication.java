@@ -20,8 +20,8 @@ public class GrcApplication {
     @Bean
     public RestTemplate restTemplate() {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(15_000);  // 15 seconds to establish connection
-        factory.setReadTimeout(120_000);    // 120 seconds to read response for AI ops
+        factory.setConnectTimeout(10_000);  // 10 seconds to establish connection
+        factory.setReadTimeout(30_000);     // 30 seconds to read response
         return new RestTemplate(factory);
     }
 }

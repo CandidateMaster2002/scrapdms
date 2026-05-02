@@ -66,14 +66,11 @@ public class GstDetailsEntity {
     @Column(name = "gstd_no", length = 15)
     private String gstdNo;
 
-    @Column(name = "gstr7_status", length = 50)
+    @Column(name = "gstr7_status", length = 20)
     private String gstr7Status;
 
-    @Column(name = "gstr7_delay_count")
+    @Column(name = "gstr7_delay_count", columnDefinition = "integer default 0")
     private Integer gstr7DelayCount = 0;
-
-    @Column(name = "gstr7_missed_count")
-    private Integer gstr7MissedCount = 0;
 
     @Column(name = "gstr7_last_updated")
     private LocalDateTime gstr7LastUpdated;
