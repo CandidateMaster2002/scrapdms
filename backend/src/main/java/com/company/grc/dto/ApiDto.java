@@ -56,10 +56,18 @@ public class ApiDto {
         private String panNumber;
         private String promoters;
 
-        // Admin-only fields (mobile & email — set to null for non-admin responses)
         private String mobile;
         private String email;
         private LocalDateTime createdAt;
+
+        // GSTR-7 specific fields
+        private String gstdNo;
+        private String gstr7Status;
+        private Integer gstr7DelayCount;
+        private Integer gstr7MissedCount;
+        private LocalDateTime gstr7LastUpdated;
+        private String categoryName;
+        private String gstr7LastReturnPeriod;
     }
 
     @Data

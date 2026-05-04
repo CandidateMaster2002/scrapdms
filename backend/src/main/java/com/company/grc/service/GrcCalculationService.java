@@ -6,8 +6,15 @@ import com.company.grc.entity.GrcScoreEntity;
 import com.company.grc.entity.GstDetailsEntity;
 import com.company.grc.repository.GrcScoreRepository;
 import com.company.grc.repository.GstDetailsRepository;
+import com.company.grc.repository.PanHsnConfigRepository;
+import com.company.grc.repository.HsnCategoryRepository;
+import com.company.grc.repository.Gstr7FilingDetailRepository;
+import com.company.grc.entity.PanHsnConfigEntity;
+import com.company.grc.entity.HsnCategoryEntity;
 import com.company.grc.rule.GrcRuleEngine;
 import org.springframework.beans.factory.annotation.Autowired;
+
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,18 +35,27 @@ public class GrcCalculationService {
     private final GrcScoreRepository grcScoreRepository;
     private final GstDetailsRepository gstDetailsRepository;
     private final GrcScoreConfig config;
+    private final PanHsnConfigRepository panHsnConfigRepository;
+    private final HsnCategoryRepository hsnCategoryRepository;
+    private final Gstr7FilingDetailRepository gstr7FilingDetailRepository;
 
     @Autowired
     public GrcCalculationService(GstFetchService gstFetchService,
             GrcRuleEngine ruleEngine,
             GrcScoreRepository grcScoreRepository,
             GstDetailsRepository gstDetailsRepository,
-            GrcScoreConfig config) {
+            GrcScoreConfig config,
+            PanHsnConfigRepository panHsnConfigRepository,
+            HsnCategoryRepository hsnCategoryRepository,
+            Gstr7FilingDetailRepository gstr7FilingDetailRepository) {
         this.gstFetchService = gstFetchService;
         this.ruleEngine = ruleEngine;
         this.grcScoreRepository = grcScoreRepository;
         this.gstDetailsRepository = gstDetailsRepository;
         this.config = config;
+        this.panHsnConfigRepository = panHsnConfigRepository;
+        this.hsnCategoryRepository = hsnCategoryRepository;
+        this.gstr7FilingDetailRepository = gstr7FilingDetailRepository;
     }
 
     /**
@@ -134,7 +150,33 @@ public class GrcCalculationService {
                 .dataSource(details.getDataSource())
                 .panNumber(details.getPanNumber())
                 .promoters(details.getPromoters())
-                .createdAt(details.getCreatedAt());
+                .createdAt(details.getCreatedAt())
+                .gstdNo(details.getGstdNo())
+                .gstr7Status(details.getGstr7Status())
+                .gstr7DelayCount(details.getGstr7DelayCount())
+                .gstr7MissedCount(details.getGstr7MissedCount())
+                .gstr7LastUpdated(details.getGstr7LastUpdated());
+
+        gstr7FilingDetailRepository.findByGstinOrderByReturnPeriodDesc(gstin).stream().findFirst()
+                .ifPresent(f -> builder.gstr7LastReturnPeriod(f.getReturnPeriod()));
+
+        String pan = details.getPanNumber();
+        if (pan != null) pan = pan.trim().toUpperCase();
+        
+        // Fallback to deriving PAN from GSTIN if missing or invalid
+        if ((pan == null || pan.length() < 10) && gstin != null && gstin.length() >= 12) {
+            pan = gstin.substring(2, 12).toUpperCase();
+        }
+
+        if (pan != null) {
+            panHsnConfigRepository.findById(pan).ifPresent(config -> {
+                if (config.getCategoryId() != null) {
+                    hsnCategoryRepository.findById(config.getCategoryId()).ifPresent(cat -> {
+                        builder.categoryName(cat.getName());
+                    });
+                }
+            });
+        }
 
         if (includePrivate) {
             builder.mobile(details.getMobile()).email(details.getEmail());
@@ -181,6 +223,21 @@ public class GrcCalculationService {
         Map<String, GrcScoreEntity> scoreMap = grcScoreRepository.findAll().stream()
                 .collect(Collectors.toMap(GrcScoreEntity::getGstin, s -> s));
 
+        Map<String, PanHsnConfigEntity> panConfigMap = panHsnConfigRepository.findAll().stream()
+                .collect(Collectors.toMap(PanHsnConfigEntity::getPan, c -> c));
+
+        Map<Long, HsnCategoryEntity> categoryMap = hsnCategoryRepository.findAll().stream()
+                .collect(Collectors.toMap(HsnCategoryEntity::getId, c -> c));
+
+        Map<String, String> lastReturnPeriodMap = gstr7FilingDetailRepository.findAll().stream()
+                .collect(Collectors.groupingBy(
+                        com.company.grc.entity.Gstr7FilingDetailEntity::getGstin,
+                        Collectors.collectingAndThen(
+                                Collectors.maxBy(java.util.Comparator.comparing(com.company.grc.entity.Gstr7FilingDetailEntity::getReturnPeriod)),
+                                opt -> opt.map(com.company.grc.entity.Gstr7FilingDetailEntity::getReturnPeriod).orElse(null)
+                        )
+                ));
+
         return allDetails.stream()
                 .map(details -> {
                     ApiDto.GstAppDetailsResponse.GstAppDetailsResponseBuilder builder =
@@ -202,7 +259,30 @@ public class GrcCalculationService {
                                     .promoters(details.getPromoters())
                                     .mobile(details.getMobile())
                                     .email(details.getEmail())
-                                    .createdAt(details.getCreatedAt());
+                                    .createdAt(details.getCreatedAt())
+                                    .gstdNo(details.getGstdNo())
+                                    .gstr7Status(details.getGstr7Status())
+                                    .gstr7DelayCount(details.getGstr7DelayCount())
+                                    .gstr7MissedCount(details.getGstr7MissedCount())
+                                    .gstr7LastUpdated(details.getGstr7LastUpdated())
+                                    .gstr7LastReturnPeriod(lastReturnPeriodMap.get(details.getGstin()));
+
+                    String pan = details.getPanNumber();
+                    if (pan != null) pan = pan.trim().toUpperCase();
+                    
+                    if ((pan == null || pan.length() < 10) && details.getGstin() != null && details.getGstin().length() >= 12) {
+                        pan = details.getGstin().substring(2, 12).toUpperCase();
+                    }
+
+                    if (pan != null) {
+                        PanHsnConfigEntity config = panConfigMap.get(pan);
+                        if (config != null && config.getCategoryId() != null) {
+                            HsnCategoryEntity cat = categoryMap.get(config.getCategoryId());
+                            if (cat != null) {
+                                builder.categoryName(cat.getName());
+                            }
+                        }
+                    }
 
                     GrcScoreEntity score = scoreMap.get(details.getGstin());
                     if (score != null) {
@@ -346,5 +426,29 @@ public class GrcCalculationService {
             }
         }
         return count;
+    }
+
+    public record NewVendorItem(
+            String gstin,
+            String companyName,
+            String gstStatus,
+            String dataSource,
+            String gstr7Status,
+            String createdAt
+    ) {}
+
+    @Transactional(readOnly = true)
+    public List<NewVendorItem> getNewVendors(Pageable pageable) {
+        return gstDetailsRepository.findNewVendors(pageable).stream()
+                .map(g -> new NewVendorItem(
+                        g.getGstin(),
+                        g.getLegalName() != null && !g.getLegalName().isBlank() ? g.getLegalName()
+                                : g.getTradeName() != null ? g.getTradeName() : "",
+                        g.getGstStatus(),
+                        g.getDataSource(),
+                        g.getGstr7Status(),
+                        g.getCreatedAt() != null ? g.getCreatedAt().toString() : null
+                ))
+                .toList();
     }
 }

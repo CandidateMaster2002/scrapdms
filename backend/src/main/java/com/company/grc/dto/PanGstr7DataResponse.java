@@ -15,8 +15,11 @@ import java.time.LocalDateTime;
 public class PanGstr7DataResponse {
 
     private String panNumber;
-    private String hsnCode; // Added to surface existing HSN
-    private boolean isApplicable;
+    private String companyName;
+    private Long categoryId;
+    private String categoryName;
+    private List<String> hsnCodes;
+    private Boolean isApplicable;
     private List<GstinData> gstins;
 
     @Data
