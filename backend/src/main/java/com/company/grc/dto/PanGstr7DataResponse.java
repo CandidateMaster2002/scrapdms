@@ -1,5 +1,6 @@
 package com.company.grc.dto;
 
+
 import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -30,8 +31,9 @@ public class PanGstr7DataResponse {
         private String gstin;
         private String gstr7Status;
         private Integer gstr7DelayCount;
+        private Integer gstr7MissedCount;
         private LocalDateTime gstr7LastUpdated;
-        private String gstType; // Added to know if GSTD
+        private String gstType;
         private String gstdNo;
     }
 }

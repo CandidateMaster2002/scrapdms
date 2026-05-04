@@ -1,17 +1,11 @@
 package com.company.grc.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "pan_hsn_config")
@@ -25,11 +19,11 @@ public class PanHsnConfigEntity {
     @Column(length = 10)
     private String pan;
 
-    @Column(name = "hsn_code", length = 10)
-    private String hsnCode;
+    @Column(name = "category_id")
+    private Long categoryId;
 
     @Column(name = "is_applicable")
-    private Boolean isApplicable; // true only if hsn_code = 7204
+    private Boolean isApplicable;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
@@ -37,7 +31,4 @@ public class PanHsnConfigEntity {
 
     @Column(name = "updated_by")
     private String updatedBy;
-
-
-
 }
