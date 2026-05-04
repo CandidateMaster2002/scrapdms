@@ -53,7 +53,15 @@ public class Gstr7FilingService {
      */
     public FilingPreviewResponse parseAndPreview(String gstin, String tableText) {
         List<GeminiService.ParsedRecord> parsed = geminiService.parseFilingTable(tableText);
-        List<YearMonth> relevant = getRelevantPeriods();
+        YearMonth earliest = parsed.stream()
+                .map(r -> {
+                    try { return YearMonth.parse(r.returnPeriod()); }
+                    catch (Exception e) { return null; }
+                })
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        List<YearMonth> relevant = getRelevantPeriods(earliest);
         
         // Convert parsed records to items, filtering by relevant periods
         List<FilingPreviewItem> items = parsed.stream()
@@ -92,13 +100,40 @@ public class Gstr7FilingService {
     }
 
     /**
+     * Parse and immediately save in background (async)
+     */
+    @org.springframework.scheduling.annotation.Async
+    public void parseAndSaveAsync(String gstin, String tableText, String role, String username) {
+        try {
+            List<GeminiService.ParsedRecord> parsed = geminiService.parseFilingTable(tableText);
+            if (parsed == null || parsed.isEmpty()) return;
+            if ("user".equals(role)) {
+                submitForReview(gstin, parsed, username);
+            } else {
+                saveFilingDetails(gstin, parsed);
+            }
+        } catch (Exception e) {
+            System.err.println("Async parse and save failed for GSTIN " + gstin + ": " + e.getMessage());
+        }
+    }
+
+    /**
      * Saves confirmed filing records, then updates gstr7_delay_count on gst_details.
      */
     @Transactional
     public void saveFilingDetails(String gstin, List<GeminiService.ParsedRecord> records) {
         filingDetailRepository.deleteByGstin(gstin);
 
-        List<YearMonth> relevant = getRelevantPeriods();
+        YearMonth earliest = records.stream()
+                .map(r -> {
+                    try { return YearMonth.parse(r.returnPeriod()); }
+                    catch (Exception e) { return null; }
+                })
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        List<YearMonth> relevant = getRelevantPeriods(earliest);
+
         List<GeminiService.ParsedRecord> filtered = records.stream()
                 .filter(r -> {
                     try {
@@ -154,19 +189,97 @@ public class Gstr7FilingService {
         }
     }
 
+    public record ReviewResponse(
+            Long id,
+            String gstin,
+            String companyName,
+            String gstdNo,
+            String submittedBy,
+            java.time.LocalDateTime submittedAt,
+            String status,
+            List<GeminiService.ParsedRecord> records,
+            String summaryStatus,
+            int delayCount,
+            int missedCount,
+            List<FilingPreviewItem> previewItems,
+            String gstStatus,
+            Integer delayCountGstr1,
+            Integer delayCountGstr3b,
+            java.time.LocalDateTime lastApiSync,
+            String aggregateTurnover
+    ) {}
+
     @Transactional(readOnly = true)
-    public List<Gstr7ReviewEntity> getPendingReviews() {
-        return reviewRepository.findByStatusOrderBySubmittedAtDesc("PENDING");
+    public List<ReviewResponse> getPendingReviews() {
+        return reviewRepository.findByStatusOrderBySubmittedAtDesc("PENDING")
+                .stream().map(r -> {
+                    List<GeminiService.ParsedRecord> records;
+                    try {
+                        records = objectMapper.readValue(r.getParsedData(),
+                                objectMapper.getTypeFactory().constructCollectionType(List.class, GeminiService.ParsedRecord.class));
+                    } catch (Exception e) {
+                        records = List.of();
+                    }
+
+                    // Compute preview stats from the stored records
+                    YearMonth earliest = records.stream()
+                            .map(rec -> { try { return YearMonth.parse(rec.returnPeriod()); } catch (Exception e) { return null; } })
+                            .filter(Objects::nonNull)
+                            .min(Comparator.naturalOrder()).orElse(null);
+                    List<YearMonth> relevant = getRelevantPeriods(earliest);
+                    List<FilingPreviewItem> previewItems = records.stream()
+                            .filter(rec -> { try { return relevant.contains(YearMonth.parse(rec.returnPeriod())); } catch (Exception e) { return false; } })
+                            .map(this::toPreviewItem).collect(Collectors.toList());
+                    Map<YearMonth, FilingPreviewItem> itemMap = previewItems.stream()
+                            .collect(Collectors.toMap(i -> YearMonth.parse(i.returnPeriod()), i -> i));
+                    List<FilingPreviewItem> finalItems = relevant.stream()
+                            .map(p -> itemMap.containsKey(p) ? itemMap.get(p)
+                                    : new FilingPreviewItem(p.toString(),
+                                            p.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH) + " " + p.getYear(),
+                                            null, null, "Missed", 0))
+                            .sorted(Comparator.comparing((FilingPreviewItem i) -> YearMonth.parse(i.returnPeriod())).reversed())
+                            .collect(Collectors.toList());
+                    int delayed = (int) finalItems.stream().filter(i -> "Regular with Delay".equals(i.status())).count();
+                    int missed = (int) finalItems.stream().filter(i -> "Missed".equals(i.status())).count();
+                    String summaryStatus = missed > 0 ? "Missed" : delayed > 0 ? "Regular with Delay" : "Regular without delay";
+
+                    GstDetailsEntity gst = gstDetailsRepository.findById(r.getGstin()).orElse(null);
+                    String companyName = gst != null ? (gst.getTradeName() != null ? gst.getTradeName() : gst.getLegalName()) : null;
+                    String gstdNo = gst != null ? gst.getGstdNo() : null;
+
+                    return new ReviewResponse(r.getId(), r.getGstin(), companyName, gstdNo, r.getSubmittedBy(), r.getSubmittedAt(),
+                            r.getStatus(), records, summaryStatus, delayed, missed, finalItems,
+                            gst != null ? gst.getGstStatus() : null,
+                            gst != null ? gst.getDelayCountGstr1() : null,
+                            gst != null ? gst.getDelayCountGstr3b() : null,
+                            gst != null ? gst.getLastApiSync() : null,
+                            gst != null ? gst.getAggregateTurnover() : null
+                    );
+                }).collect(Collectors.toList());
     }
 
     @Transactional
-    public void approveReview(Long reviewId, List<GeminiService.ParsedRecord> overrideRecords) {
+    public void approveReview(Long reviewId, List<GeminiService.ParsedRecord> overrideRecords, 
+                              String summaryStatus, Integer delayCount, Integer missedCount) {
         Gstr7ReviewEntity review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new RuntimeException("Review not found"));
         review.setStatus("APPROVED");
         reviewRepository.save(review);
         
         saveFilingDetails(review.getGstin(), overrideRecords);
+
+        // Apply manual summary overrides if provided
+        if (summaryStatus != null || delayCount != null || missedCount != null) {
+            Optional<GstDetailsEntity> optGst = gstDetailsRepository.findById(review.getGstin());
+            if (optGst.isPresent()) {
+                GstDetailsEntity entity = optGst.get();
+                if (summaryStatus != null) entity.setGstr7Status(summaryStatus);
+                if (delayCount != null) entity.setGstr7DelayCount(delayCount);
+                if (missedCount != null) entity.setGstr7MissedCount(missedCount);
+                entity.setGstr7LastUpdated(java.time.LocalDateTime.now());
+                gstDetailsRepository.save(entity);
+            }
+        }
     }
 
     @Transactional
@@ -241,8 +354,17 @@ public class Gstr7FilingService {
             return;
         }
 
-        List<YearMonth> relevant = getRelevantPeriods();
         List<Gstr7FilingDetailEntity> records = filingDetailRepository.findByGstinOrderByReturnPeriodDesc(gstin);
+        
+        YearMonth earliest = records.stream()
+                .map(r -> {
+                    try { return YearMonth.parse(r.getReturnPeriod()); }
+                    catch (Exception e) { return null; }
+                })
+                .filter(Objects::nonNull)
+                .min(Comparator.naturalOrder())
+                .orElse(null);
+        List<YearMonth> relevant = getRelevantPeriods(earliest);
         
         Set<YearMonth> dbPeriods = records.stream()
                 .map(r -> YearMonth.parse(r.getReturnPeriod()))
@@ -282,7 +404,7 @@ public class Gstr7FilingService {
         gstDetailsRepository.save(entity);
     }
 
-    private List<YearMonth> getRelevantPeriods() {
+    private List<YearMonth> getRelevantPeriods(YearMonth earliestFilingMonth) {
         LocalDate today = LocalDate.now();
         YearMonth latest;
         // Logic: Till 11th, upto month-2. From 12th, upto month-1.
@@ -292,9 +414,14 @@ public class Gstr7FilingService {
             latest = YearMonth.from(today.minusMonths(1));
         }
 
+        YearMonth start = latest.minusMonths(11);
+        if (earliestFilingMonth != null && earliestFilingMonth.isAfter(start)) {
+            start = earliestFilingMonth;
+        }
+
         List<YearMonth> periods = new ArrayList<>();
-        for (int i = 0; i < 12; i++) {
-            periods.add(latest.minusMonths(i));
+        for (YearMonth ym = latest; !ym.isBefore(start); ym = ym.minusMonths(1)) {
+            periods.add(ym);
         }
         return periods;
     }

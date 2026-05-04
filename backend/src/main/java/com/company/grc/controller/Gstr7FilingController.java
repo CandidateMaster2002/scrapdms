@@ -38,6 +38,18 @@ public class Gstr7FilingController {
         }
     }
 
+    /** Trigger an asynchronous background parse and save. Returns immediately. */
+    @PostMapping("/parse-save-async")
+    public ResponseEntity<?> parseSaveAsync(
+            @RequestHeader(value = "Role", required = false) String role,
+            @RequestHeader(value = "Username", required = false, defaultValue = "user") String username,
+            @RequestBody ParseFilingRequest req) {
+        if (isNotAuthorized(role)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        
+        filingService.parseAndSaveAsync(req.getGstin(), req.getTableText(), role, username);
+        return ResponseEntity.ok(java.util.Map.of("status", "processing_in_background"));
+    }
+
     /** Confirm and save parsed filing records for a GSTIN. */
     @PostMapping("/save-filing")
     public ResponseEntity<?> saveFiling(
@@ -75,6 +87,9 @@ public class Gstr7FilingController {
     public static class SaveFilingRequest {
         private String gstin;
         private List<GeminiService.ParsedRecord> records;
+        private String summaryStatus;
+        private Integer delayCount;
+        private Integer missedCount;
     }
 
     // ── Review Endpoints ────────────────────────────────────────────────────
@@ -91,7 +106,7 @@ public class Gstr7FilingController {
             @PathVariable Long id,
             @RequestBody SaveFilingRequest req) {
         if (!"super_admin".equals(role)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
-        filingService.approveReview(id, req.getRecords());
+        filingService.approveReview(id, req.getRecords(), req.getSummaryStatus(), req.getDelayCount(), req.getMissedCount());
         return ResponseEntity.ok().build();
     }
 

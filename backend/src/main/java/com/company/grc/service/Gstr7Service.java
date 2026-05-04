@@ -114,8 +114,19 @@ public class Gstr7Service {
                                     .build())
                             .collect(Collectors.toList());
 
+                    String companyName = entry.getValue().stream()
+                            .filter(g -> g.getLegalName() != null && !g.getLegalName().trim().isEmpty())
+                            .map(GstDetailsEntity::getLegalName)
+                            .findFirst()
+                            .orElse(entry.getValue().stream()
+                                    .filter(g -> g.getTradeName() != null && !g.getTradeName().trim().isEmpty())
+                                    .map(GstDetailsEntity::getTradeName)
+                                    .findFirst()
+                                    .orElse(""));
+
                     return PanGstr7DataResponse.builder()
                             .panNumber(pan)
+                            .companyName(companyName)
                             .categoryId(categoryId)
                             .categoryName(category != null ? category.getName() : null)
                             .hsnCodes(hsnCodes)

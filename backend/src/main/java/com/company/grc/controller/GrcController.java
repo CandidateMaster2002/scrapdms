@@ -115,6 +115,16 @@ public class GrcController {
         return ResponseEntity.ok("Successfully deleted details for GSTIN: " + gstin);
     }
 
+    @GetMapping("/admin/new-vendors")
+    public ResponseEntity<?> getNewVendors(
+            @RequestHeader(value = "Role", required = false) String role,
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "50") int limit) {
+        if (!"super_admin".equals(role)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        var pageable = org.springframework.data.domain.PageRequest.of(0, Math.min(limit, 200));
+        var vendors = grcCalculationService.getNewVendors(pageable);
+        return ResponseEntity.ok(vendors);
+    }
+
     /**
      * Permanent cleanup of "garbage" records.
      * Deletes records where GSTIN is clearly invalid.

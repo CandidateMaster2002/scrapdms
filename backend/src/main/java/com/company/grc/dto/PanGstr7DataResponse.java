@@ -16,6 +16,7 @@ import java.time.LocalDateTime;
 public class PanGstr7DataResponse {
 
     private String panNumber;
+    private String companyName;
     private Long categoryId;
     private String categoryName;
     private List<String> hsnCodes;

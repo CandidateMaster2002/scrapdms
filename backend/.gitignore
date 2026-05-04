@@ -40,5 +40,6 @@ logs/
 *.log
 
 ### Secrets — never commit these ###
+.env
 # application.properties is tracked (no secrets inside — use env vars)
 src/main/resources/google-service-account.json
