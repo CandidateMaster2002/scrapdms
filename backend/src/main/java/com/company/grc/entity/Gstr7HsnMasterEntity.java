@@ -1,15 +1,11 @@
 package com.company.grc.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Column;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import jakarta.persistence.*;
+import lombok.*;
+
 import java.time.LocalDateTime;
-import org.hibernate.annotations.UpdateTimestamp;
+
+import com.fasterxml.jackson.annotation.JsonBackReference;
 
 @Entity
 @Table(name = "gstr7_hsn_master")
@@ -26,10 +22,16 @@ public class Gstr7HsnMasterEntity {
     @Column(name = "description")
     private String description;
 
-    @UpdateTimestamp
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 
     @Column(name = "created_by")
     private String createdBy;
+
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    @JsonBackReference
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private HsnCategoryEntity category;
 }

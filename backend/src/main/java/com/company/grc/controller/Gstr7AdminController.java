@@ -42,7 +42,7 @@ public class Gstr7AdminController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied. super_admin role required.");
         }
         PanHsnConfigEntity config = gstr7Service.saveOrUpdateHsn(
-                request.getPan(), request.getHsnCode(), request.getUpdatedBy());
+                request.getPan(), request.getCategoryId(), request.getUpdatedBy());
         return ResponseEntity.ok(config);
     }
 
@@ -67,14 +67,14 @@ public class Gstr7AdminController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied. super_admin role required.");
         }
         GstDetailsEntity updated = gstr7Service.updateGstr7Data(
-                gstin, request.getStatus(), request.getDelayCount());
+                gstin, request.getStatus(), request.getDelayCount(), request.getMissedCount());
         return ResponseEntity.ok(updated);
     }
 
     @Data
     public static class HsnRequest {
         private String pan;
-        private String hsnCode;
+        private Long categoryId;
         private String updatedBy;
     }
 
@@ -82,5 +82,6 @@ public class Gstr7AdminController {
     public static class Gstr7StatusRequest {
         private String status;
         private Integer delayCount;
+        private Integer missedCount;
     }
 }
