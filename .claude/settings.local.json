@@ -3,7 +3,12 @@
     "allow": [
       "Bash(mvn compile:*)",
       "Bash(npx vite:*)",
-      "Bash(xargs grep *)"
+      "Bash(xargs grep *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(del *)",
+      "Bash(git rm *)"
     ]
   }
 }

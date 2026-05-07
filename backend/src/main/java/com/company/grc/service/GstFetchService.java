@@ -179,6 +179,30 @@ public class GstFetchService {
 
         // Count filing delays using date-based rule (see GSTR_DELAY_COUNT_RULE.md)
         calculateDelayCounts(entity, data);
+
+        // Reset delays if turnover < 3 Cr
+        double turnoverCr = parseTurnoverCr(entity.getAggregateTurnover());
+        if (turnoverCr < 3.0) {
+            entity.setDelayCountGstr1(0);
+            entity.setDelayCountGstr3b(0);
+        }
+    }
+
+    private double parseTurnoverCr(String raw) {
+        if (raw == null || raw.isBlank()) return 0;
+        boolean isLakhs = raw.toLowerCase().contains("lakh");
+        String[] tokens = raw.replaceAll("[^0-9.]", " ").trim().split("\\s+");
+        double sum = 0;
+        int count = 0;
+        for (String t : tokens) {
+            if (t.isBlank()) continue;
+            try {
+                double val = Double.parseDouble(t);
+                sum += isLakhs ? val / 100.0 : val;
+                count++;
+            } catch (NumberFormatException ignored) {}
+        }
+        return count > 0 ? sum / count : 0;
     }
 
     /**
