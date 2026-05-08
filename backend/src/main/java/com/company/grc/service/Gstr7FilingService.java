@@ -123,6 +123,7 @@ public class Gstr7FilingService {
     @Transactional
     public void saveFilingDetails(String gstin, List<GeminiService.ParsedRecord> records) {
         filingDetailRepository.deleteByGstin(gstin);
+        filingDetailRepository.flush(); // Ensure delete is executed before inserts
 
         YearMonth earliest = records.stream()
                 .map(r -> {
@@ -134,13 +135,22 @@ public class Gstr7FilingService {
                 .orElse(null);
         List<YearMonth> relevant = getRelevantPeriods(earliest);
 
-        List<GeminiService.ParsedRecord> filtered = records.stream()
-                .filter(r -> {
-                    try {
-                        return relevant.contains(YearMonth.parse(r.returnPeriod()));
-                    } catch (Exception e) { return false; }
-                })
-                .toList();
+        // Filter by relevant periods AND de-duplicate by returnPeriod
+        Map<String, GeminiService.ParsedRecord> uniqueRecords = new HashMap<>();
+        for (GeminiService.ParsedRecord r : records) {
+            try {
+                YearMonth ym = YearMonth.parse(r.returnPeriod());
+                if (relevant.contains(ym)) {
+                    // If duplicate, keep the one with a filing date if the current one doesn't have one
+                    if (!uniqueRecords.containsKey(r.returnPeriod()) || 
+                        (uniqueRecords.get(r.returnPeriod()).dateOfFiling() == null && r.dateOfFiling() != null)) {
+                        uniqueRecords.put(r.returnPeriod(), r);
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        List<GeminiService.ParsedRecord> filtered = new ArrayList<>(uniqueRecords.values());
 
         for (GeminiService.ParsedRecord rec : filtered) {
             LocalDate dueDate = calculateDueDate(rec.returnPeriod());
