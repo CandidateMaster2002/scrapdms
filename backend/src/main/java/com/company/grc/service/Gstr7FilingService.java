@@ -170,6 +170,11 @@ public class Gstr7FilingService {
         return filingDetailRepository.findByGstinOrderByReturnPeriodDesc(gstin);
     }
 
+    @Transactional(readOnly = true)
+    public List<Gstr7FilingDetailEntity> getAllFilingDetails() {
+        return filingDetailRepository.findAll();
+    }
+
     // ── Review Workflow ─────────────────────────────────────────────────────
 
     @Transactional

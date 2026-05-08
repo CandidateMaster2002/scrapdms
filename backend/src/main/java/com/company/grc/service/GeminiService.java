@@ -43,8 +43,8 @@ public class GeminiService {
             - "dateOfFiling": actual filing date as "YYYY-MM-DD", or null if not filed/pending/missing
 
             Rules:
-            - Financial year like "2025-2026" + Month "March" → returnPeriod = "2025-03"
-            - Financial year like "2025-2026" + Month "April" → returnPeriod = "2025-04" (April is start of FY)
+            - Financial year like "2025-2026" + Month "April" through "December" → returnPeriod = "2025-MM"
+            - Financial year like "2025-2026" + Month "January" through "March" → returnPeriod = "2026-MM"
             - If status is "Not Filed", "Pending", "-", or blank → set dateOfFiling to null
             - Date format in input may be DD/MM/YYYY — convert to YYYY-MM-DD
             - Include ALL periods found in the text, not just filed ones

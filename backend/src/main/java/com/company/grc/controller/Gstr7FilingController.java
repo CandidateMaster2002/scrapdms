@@ -77,6 +77,18 @@ public class Gstr7FilingController {
         return ResponseEntity.ok(details);
     }
 
+    /** Bulk: Get all filing details for all GSTINs, grouped by GSTIN. */
+    @GetMapping("/filing-details-all")
+    public ResponseEntity<?> getAllFilingDetails(
+            @RequestHeader(value = "Role", required = false) String role) {
+        if (isNotAuthorized(role)) return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Access denied.");
+        List<Gstr7FilingDetailEntity> all = filingService.getAllFilingDetails();
+        // Group by GSTIN
+        java.util.Map<String, List<Gstr7FilingDetailEntity>> grouped = all.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Gstr7FilingDetailEntity::getGstin));
+        return ResponseEntity.ok(grouped);
+    }
+
     @Data
     public static class ParseFilingRequest {
         private String gstin;

@@ -89,10 +89,14 @@ public class Gstr7Service {
         Map<Long, HsnCategoryEntity> categoriesById = hsnCategoryRepository.findAll().stream()
                 .collect(Collectors.toMap(HsnCategoryEntity::getId, c -> c));
 
+        // Pre-fetch ALL PAN configs in one query instead of N individual queries
+        Map<String, PanHsnConfigEntity> allConfigs = panHsnConfigRepository.findAll().stream()
+                .collect(Collectors.toMap(PanHsnConfigEntity::getPan, c -> c));
+
         return groupedByPan.entrySet().stream()
                 .map(entry -> {
                     String pan = entry.getKey();
-                    PanHsnConfigEntity config = panHsnConfigRepository.findById(pan).orElse(null);
+                    PanHsnConfigEntity config = allConfigs.get(pan);
                     Long categoryId = config != null ? config.getCategoryId() : null;
                     HsnCategoryEntity category = categoryId != null ? categoriesById.get(categoryId) : null;
 
