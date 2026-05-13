@@ -75,8 +75,12 @@ public class Gstr7FilingService {
         Map<YearMonth, FilingPreviewItem> itemMap = items.stream()
                 .collect(Collectors.toMap(i -> YearMonth.parse(i.returnPeriod()), i -> i));
 
-        // Create a complete list of 12 months, filling in missing ones as Missed
+        // month-1 is optional before the 11th: save if provided, but don't mark as Missed if absent
+        YearMonth optionalPeriod = getOptionalPeriod();
+
+        // Build the final list; skip optional period if it was not in the pasted data
         List<FilingPreviewItem> finalItems = relevant.stream()
+                .filter(p -> itemMap.containsKey(p) || !p.equals(optionalPeriod))
                 .map(p -> {
                     if (itemMap.containsKey(p)) return itemMap.get(p);
                     String label = p.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH) + " " + p.getYear();
@@ -150,26 +154,48 @@ public class Gstr7FilingService {
             } catch (Exception ignored) {}
         }
 
-        List<GeminiService.ParsedRecord> filtered = new ArrayList<>(uniqueRecords.values());
+        YearMonth optionalPeriod = getOptionalPeriod();
 
-        for (GeminiService.ParsedRecord rec : filtered) {
-            LocalDate dueDate = calculateDueDate(rec.returnPeriod());
-            LocalDate filingDate = rec.dateOfFiling() != null && !rec.dateOfFiling().isBlank()
-                    ? LocalDate.parse(rec.dateOfFiling())
-                    : null;
-            String status = deriveStatus(filingDate, dueDate);
-            int delayDays = deriveDelayDays(filingDate, dueDate);
+        for (YearMonth p : relevant) {
+            String periodStr = p.toString();
+            GeminiService.ParsedRecord rec = uniqueRecords.get(periodStr);
 
-            Gstr7FilingDetailEntity entity = Gstr7FilingDetailEntity.builder()
-                    .gstin(gstin)
-                    .returnPeriod(rec.returnPeriod())
-                    .build();
+            if (rec == null) {
+                // Data not provided in paste
+                if (p.equals(optionalPeriod)) {
+                    continue; // optional period is not counted as missed
+                }
+                // Mandatory period is missing -> save explicitly as Missed
+                LocalDate dueDate = calculateDueDate(periodStr);
+                Gstr7FilingDetailEntity entity = Gstr7FilingDetailEntity.builder()
+                        .gstin(gstin)
+                        .returnPeriod(periodStr)
+                        .build();
+                entity.setDueDate(dueDate);
+                entity.setDateOfFiling(null);
+                entity.setStatus("Missed");
+                entity.setDelayDays(0);
+                filingDetailRepository.save(entity);
+            } else {
+                // Data was provided
+                LocalDate dueDate = calculateDueDate(rec.returnPeriod());
+                LocalDate filingDate = rec.dateOfFiling() != null && !rec.dateOfFiling().isBlank()
+                        ? LocalDate.parse(rec.dateOfFiling())
+                        : null;
+                String status = deriveStatus(filingDate, dueDate);
+                int delayDays = deriveDelayDays(filingDate, dueDate);
 
-            entity.setDueDate(dueDate);
-            entity.setDateOfFiling(filingDate);
-            entity.setStatus(status);
-            entity.setDelayDays(delayDays);
-            filingDetailRepository.save(entity);
+                Gstr7FilingDetailEntity entity = Gstr7FilingDetailEntity.builder()
+                        .gstin(gstin)
+                        .returnPeriod(rec.returnPeriod())
+                        .build();
+
+                entity.setDueDate(dueDate);
+                entity.setDateOfFiling(filingDate);
+                entity.setStatus(status);
+                entity.setDelayDays(delayDays);
+                filingDetailRepository.save(entity);
+            }
         }
 
         updateGstDetailsAggregate(gstin);
@@ -385,6 +411,9 @@ public class Gstr7FilingService {
                 .map(r -> YearMonth.parse(r.getReturnPeriod()))
                 .collect(Collectors.toSet());
 
+        // month-1 is optional before the 11th — absent data must NOT be counted as missing
+        YearMonth optionalPeriod = getOptionalPeriod();
+
         long delayedCount = records.stream()
                 .filter(r -> relevant.contains(YearMonth.parse(r.getReturnPeriod())))
                 .filter(r -> "Regular with Delay".equals(r.getStatus()))
@@ -395,7 +424,11 @@ public class Gstr7FilingService {
                 .filter(r -> "Missed".equals(r.getStatus()))
                 .count();
 
-        long missingCount = relevant.stream().filter(p -> !dbPeriods.contains(p)).count();
+        // Periods absent from DB: exclude the optional period (filing window still open)
+        long missingCount = relevant.stream()
+                .filter(p -> !dbPeriods.contains(p))
+                .filter(p -> !p.equals(optionalPeriod))
+                .count();
         long totalMissed = explicitMissed + missingCount;
 
         if (records.isEmpty()) {
@@ -419,15 +452,15 @@ public class Gstr7FilingService {
         gstDetailsRepository.save(entity);
     }
 
+    /**
+     * Always returns up to month-1 as the latest period (12 months window).
+     * Whether month-1 is "required" (i.e. counted as missing when absent) is
+     * determined separately by getOptionalPeriod().
+     */
     private List<YearMonth> getRelevantPeriods(YearMonth earliestFilingMonth) {
         LocalDate today = LocalDate.now();
-        YearMonth latest;
-        // Logic: Till 11th, upto month-2. From 12th, upto month-1.
-        if (today.getDayOfMonth() <= 11) {
-            latest = YearMonth.from(today.minusMonths(2));
-        } else {
-            latest = YearMonth.from(today.minusMonths(1));
-        }
+        // Always go up to month-1; the optional-period check handles the before-11th case
+        YearMonth latest = YearMonth.from(today.minusMonths(1));
 
         YearMonth start = latest.minusMonths(11);
         if (earliestFilingMonth != null && earliestFilingMonth.isAfter(start)) {
@@ -439,5 +472,15 @@ public class Gstr7FilingService {
             periods.add(ym);
         }
         return periods;
+    }
+
+    /**
+     * Returns month-1 when today is on or before the 11th (filing window still open),
+     * meaning that period's absence should NOT be counted as missed.
+     * Returns null after the 11th (window closed, absence = missed).
+     */
+    private YearMonth getOptionalPeriod() {
+        LocalDate today = LocalDate.now();
+        return today.getDayOfMonth() <= 11 ? YearMonth.from(today.minusMonths(1)) : null;
     }
 }

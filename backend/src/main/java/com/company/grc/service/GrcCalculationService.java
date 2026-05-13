@@ -76,10 +76,14 @@ public class GrcCalculationService {
         Optional<GrcScoreEntity> existingScoreOpt = grcScoreRepository.findById(trimmedGstin);
         if (existingScoreOpt.isPresent()) {
             GrcScoreEntity existingScore = existingScoreOpt.get();
+            String gstr7Status = gstDetailsRepository.findById(trimmedGstin)
+                    .map(d -> buildGstr7FilingStatus(d.getGstr7Status(), d.getGstr7DelayCount(), d.getGstr7MissedCount()))
+                    .orElse("NA");
             return ApiDto.GrcResponse.builder()
                     .gstin(trimmedGstin)
                     .grcScore(existingScore.getScore())
                     .calculatedAt(existingScore.getCalculatedAt())
+                    .gstr7FilingStatus(gstr7Status)
                     .build();
         }
 
@@ -98,17 +102,20 @@ public class GrcCalculationService {
                     .gstin(trimmedGstin)
                     .grcScore(config.DUMMY_DEFAULT_SCORE)
                     .calculatedAt(errorScore.getCalculatedAt())
+                    .gstr7FilingStatus(buildGstr7FilingStatus(details.getGstr7Status(), details.getGstr7DelayCount(), details.getGstr7MissedCount()))
                     .build();
         }
 
         recalculateStoredScore(trimmedGstin);
         GrcScoreEntity scoreEntity = grcScoreRepository.findById(trimmedGstin)
                 .orElseThrow(() -> new RuntimeException("Score not found after recalculation for: " + trimmedGstin));
+        GstDetailsEntity freshDetails = gstDetailsRepository.findById(trimmedGstin).orElse(details);
 
         return ApiDto.GrcResponse.builder()
                 .gstin(trimmedGstin)
                 .grcScore(scoreEntity.getScore())
                 .calculatedAt(scoreEntity.getCalculatedAt())
+                .gstr7FilingStatus(buildGstr7FilingStatus(freshDetails.getGstr7Status(), freshDetails.getGstr7DelayCount(), freshDetails.getGstr7MissedCount()))
                 .build();
     }
 
@@ -119,12 +126,35 @@ public class GrcCalculationService {
 
         GrcScoreEntity scoreEntity = grcScoreRepository.findById(gstin)
                 .orElseThrow(() -> new RuntimeException("Score not found after recalculation for: " + gstin));
+        GstDetailsEntity details = gstDetailsRepository.findById(gstin).orElse(null);
 
         return ApiDto.GrcResponse.builder()
                 .gstin(gstin)
                 .grcScore(scoreEntity.getScore())
                 .calculatedAt(scoreEntity.getCalculatedAt())
+                .gstr7FilingStatus(details != null
+                        ? buildGstr7FilingStatus(details.getGstr7Status(), details.getGstr7DelayCount(), details.getGstr7MissedCount())
+                        : "NA")
                 .build();
+    }
+
+    /** Formats the human-readable GSTR-7 filing status string for API consumers. */
+    private String buildGstr7FilingStatus(String status, Integer delayCount, Integer missedCount) {
+        if (status == null || status.isBlank()) return "NA";
+        return switch (status.trim()) {
+            case "Regular without delay" -> "Regular without delay";
+            case "Regular with Delay" -> {
+                int d = (delayCount != null) ? delayCount : 0;
+                yield "Regular with " + d + " delay" + (d == 1 ? "" : "s");
+            }
+            case "Missed" -> {
+                int m = (missedCount != null) ? missedCount : 0;
+                yield m + " missed";
+            }
+            case "Processing" -> "Processing";
+            case "NA" -> "NA";
+            default -> status;
+        };
     }
 
     // ── Detail retrieval ──────────────────────────────────────────────────────
