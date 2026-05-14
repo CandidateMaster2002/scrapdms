@@ -35,5 +35,8 @@ public class PanGstr7DataResponse {
         private LocalDateTime gstr7LastUpdated;
         private String gstType;
         private String gstdNo;
+        private String tradeName;
+        private String legalName;
+        private LocalDateTime createdAt;
     }
 }

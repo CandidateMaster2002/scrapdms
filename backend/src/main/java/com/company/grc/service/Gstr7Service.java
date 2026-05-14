@@ -115,6 +115,9 @@ public class Gstr7Service {
                                     .gstr7LastUpdated(g.getGstr7LastUpdated())
                                     .gstType(g.getGstType())
                                     .gstdNo(g.getGstdNo())
+                                    .tradeName(g.getTradeName())
+                                    .legalName(g.getLegalName())
+                                    .createdAt(g.getCreatedAt())
                                     .build())
                             .collect(Collectors.toList());
 
